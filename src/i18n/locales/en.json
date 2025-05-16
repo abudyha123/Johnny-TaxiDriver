@@ -1,0 +1,35 @@
+{
+  "header": {
+    "services": "Services",
+    "areas": "Service Areas",
+    "testimonials": "Testimonials",
+    "bookNow": "Book Now",
+    "contact": "Contact",
+    "callNow": "Call Now"
+  },
+  "hero": {
+    "tagline": "Taxi & Accessible Transportation Services",
+    "title": "Professional Taxi Service in Haifa",
+    "subtitle": "Regular and wheelchair-accessible taxi services available 24/7 throughout Haifa and surrounding areas.",
+    "bookRide": "Book Your Ride",
+    "callNow": "Call Now",
+    "approved": "Israeli Ministry of Transportation Approved"
+  },
+  "services": {
+    "title": "Our Services",
+    "regular": {
+      "title": "Regular Taxi",
+      "description": "Comfortable and reliable taxi service for all your transportation needs"
+    },
+    "accessible": {
+      "title": "Accessible Transport",
+      "description": "Specially equipped vehicle with wheelchair access and securing systems"
+    }
+  },
+  "contact": {
+    "name": "Johnny",
+    "phone": "054-592-8999",
+    "location": "Haifa, Israel",
+    "available": "Available 24/7"
+  }
+}
