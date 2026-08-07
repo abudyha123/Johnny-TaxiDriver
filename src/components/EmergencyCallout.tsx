@@ -1,13 +1,13 @@
 import React from 'react';
 import Button from './ui/Button';
-import { Phone, Clock } from 'lucide-react';
+import { Phone, Clock, MessageCircle } from 'lucide-react';
 
 const EmergencyCallout: React.FC = () => {
   return (
     <div className="bg-blue-600 text-white py-10 relative overflow-hidden">
       {/* Yellow diagonal element */}
       <div className="absolute left-0 top-0 w-full h-24 bg-yellow-500 transform -translate-y-12 skew-y-3 z-0 opacity-80"></div>
-      
+
       <div className="container mx-auto px-4 md:px-6 relative z-10">
         <div className="max-w-5xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between">
@@ -19,22 +19,31 @@ const EmergencyCallout: React.FC = () => {
                 <h3 className="text-2xl md:text-3xl font-bold">Need Emergency Transport?</h3>
               </div>
               <p className="text-blue-100 mt-2 md:text-lg pl-16">
-                Our accessible taxis are available 24/7 for urgent medical appointments or emergencies.
+                Our accessible taxi is available 24/7 for urgent medical appointments or emergencies.
               </p>
             </div>
-            
+
             <div className="flex flex-col sm:flex-row gap-4">
-              <Button 
+              <Button
                 variant="primary"
                 size="lg"
                 onClick={() => {
-                  window.location.href = 'tel:+9721234567';
+                  window.location.href = 'tel:+972545928999';
                 }}
                 className="flex items-center justify-center"
               >
                 <Phone size={20} className="mr-2" />
                 Call Emergency Line
               </Button>
+              <a
+                href="https://wa.me/972545928999"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
+              >
+                <MessageCircle size={20} className="mr-2" />
+                WhatsApp
+              </a>
               <div className="hidden md:flex items-center text-blue-100">
                 <Clock size={20} className="mr-2 text-yellow-400" />
                 <span>24/7 Availability</span>
