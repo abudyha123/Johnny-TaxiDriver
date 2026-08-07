@@ -5,7 +5,9 @@
     "testimonials": "Testimonials",
     "bookNow": "Book Now",
     "contact": "Contact",
-    "callNow": "Call Now"
+    "callNow": "Call Now",
+    "whatsapp": "WhatsApp",
+    "bookARide": "Book a Ride"
   },
   "hero": {
     "tagline": "Taxi & Accessible Transportation Services",
@@ -13,7 +15,264 @@
     "subtitle": "Regular and wheelchair-accessible taxi services available 24/7 throughout Haifa and surrounding areas.",
     "bookRide": "Book Your Ride",
     "callNow": "Call Now",
-    "approved": "Israeli Ministry of Transportation Approved"
+    "approved": "Israeli Ministry of Transportation Approved",
+    "badge": "Accessible Transportation in Haifa & the North",
+    "headline1": "Mobility For Everyone,",
+    "headline2": "Everywhere",
+    "description": "Professional wheelchair-accessible taxi service serving Haifa, the entire North region, and transfers to and from Ben Gurion Airport. Available 24/7 for both scheduled appointments and emergency transportation.",
+    "whatsappCta": "Chat with us on WhatsApp"
+  },
+  "features": {
+    "sectionTitle": "Our Specialized Services",
+    "sectionSubtitle": "We provide comprehensive accessible transportation solutions designed for comfort, safety, and independence.",
+    "items": [
+      {
+        "title": "Wheelchair Accessible",
+        "description": "Vehicle equipped with a manual wheelchair ramp and secure locking system for safe, comfortable transport."
+      },
+      {
+        "title": "24/7 Availability",
+        "description": "Our service is available around the clock for both scheduled and emergency rides."
+      },
+      {
+        "title": "Northern Israel Coverage",
+        "description": "Serving Haifa, the entire North region, and transfers to and from Ben Gurion Airport."
+      },
+      {
+        "title": "Transparent Pricing",
+        "description": "Clear fare structure with no hidden costs or surprises."
+      },
+      {
+        "title": "Emergency Service",
+        "description": "Priority dispatch for urgent medical appointments or emergencies."
+      },
+      {
+        "title": "Licensed & Insured",
+        "description": "Professionally licensed and fully insured for your peace of mind."
+      }
+    ],
+    "vehicleTitle": "Our Vehicle",
+    "vehicleIntro": "Our vehicle is specially equipped with:",
+    "vehicleFeatures": [
+      "Manual wheelchair ramp for safe, easy boarding",
+      "Secure wheelchair locking system",
+      "Extra spacious interior with climate control",
+      "Safety equipment exceeding regulatory standards"
+    ]
+  },
+  "areas": {
+    "sectionTitle": "Areas We Serve",
+    "sectionSubtitle": "Our accessible taxi service covers Haifa, the entire North region, and transfers to and from Ben Gurion Airport.",
+    "mapLabel": "Haifa & Northern Israel Coverage",
+    "popularDestinations": "Popular Destinations",
+    "commonTrips": "Common Trips",
+    "items": [
+      {
+        "name": "Ben Gurion Airport",
+        "description": "Reliable accessible transfers to and from Ben Gurion Airport, any time of day or night.",
+        "destinations": [
+          "Departures Terminal",
+          "Arrivals Terminal",
+          "Airport Hotels",
+          "Car Rental Area",
+          "Train Station",
+          "Parking Terminals"
+        ],
+        "trips": [
+          "Airport pickups and drop-offs",
+          "Round trips for flights and travel",
+          "Transfers to hotels near the airport",
+          "Coordinated pickup for flight delays"
+        ]
+      },
+      {
+        "name": "Haifa",
+        "description": "Full accessible taxi service throughout Haifa and the surrounding metropolitan area.",
+        "destinations": [
+          "Rambam Hospital",
+          "Haifa Port",
+          "Bahai Gardens",
+          "Carmel Center",
+          "Grand Canyon Mall",
+          "Technion"
+        ],
+        "trips": [
+          "Medical appointments at Rambam Hospital",
+          "Cruise ship port transfers",
+          "Visits to the Bahai Gardens",
+          "Shopping trips to Grand Canyon Mall"
+        ]
+      },
+      {
+        "name": "Krayot",
+        "description": "Serving Kiryat Ata, Kiryat Bialik, Kiryat Motzkin and the rest of the Krayot area.",
+        "destinations": [
+          "Lev HaMifratz Mall",
+          "Kiryat Ata Center",
+          "Kiryat Bialik Center",
+          "Kiryat Motzkin Beach",
+          "Local Clinics",
+          "Train Stations"
+        ],
+        "trips": [
+          "Medical appointments at local clinics",
+          "Shopping trips to Lev HaMifratz Mall",
+          "Transportation between Krayot neighborhoods",
+          "Train station transfers"
+        ]
+      },
+      {
+        "name": "Akko",
+        "description": "Accessible transportation throughout Akko (Acre) and the western Galilee coast.",
+        "destinations": [
+          "Old City of Akko",
+          "Akko Beach",
+          "Western Galilee Hospital",
+          "Akko Train Station",
+          "Local Market",
+          "City Center"
+        ],
+        "trips": [
+          "Visits to the Old City and markets",
+          "Medical appointments at Western Galilee Hospital",
+          "Beach access transportation",
+          "Day trips along the western Galilee coast"
+        ]
+      },
+      {
+        "name": "Nahariya",
+        "description": "Covering Nahariya and the northern coastal communities.",
+        "destinations": [
+          "Nahariya Beach Promenade",
+          "Galilee Medical Center",
+          "City Center",
+          "Train Station",
+          "Local Malls",
+          "Achziv Beach"
+        ],
+        "trips": [
+          "Medical visits to Galilee Medical Center",
+          "Beach and promenade access",
+          "Train station transfers",
+          "Day trips to Achziv and the northern coast"
+        ]
+      },
+      {
+        "name": "Tiberias",
+        "description": "Serving Tiberias and communities around the Sea of Galilee.",
+        "destinations": [
+          "Sea of Galilee Promenade",
+          "Poriya Hospital",
+          "Old City",
+          "Tiberias Hot Springs",
+          "City Center",
+          "Local Hotels"
+        ],
+        "trips": [
+          "Medical appointments at Poriya Hospital",
+          "Visits to the Sea of Galilee promenade",
+          "Hotel and resort transportation",
+          "Day trips around the Galilee"
+        ]
+      }
+    ]
+  },
+  "testimonialsSection": {
+    "sectionTitle": "What Our Clients Say",
+    "sectionSubtitle": "Real experiences from people who rely on our accessible taxi service throughout Israel.",
+    "cta": "Experience our service yourself",
+    "items": [
+      {
+        "name": "David Cohen",
+        "content": "The accessible taxi service has been a lifesaver for my mother. The driver is always punctual and extremely helpful with her wheelchair.",
+        "location": "Haifa",
+        "rating": 5
+      },
+      {
+        "name": "Sarah Levy",
+        "content": "I rely on this service for all my medical appointments. The vehicle is clean, comfortable, and the ramp makes boarding so much easier.",
+        "location": "Krayot",
+        "rating": 5
+      },
+      {
+        "name": "Mohammed Amir",
+        "content": "Excellent service that has made traveling much more accessible for my family. Highly recommended for anyone with mobility needs.",
+        "location": "Nahariya",
+        "rating": 4
+      },
+      {
+        "name": "Rachel Goldstein",
+        "content": "The emergency service is remarkable. When I needed urgent transport for my grandfather, they arrived within 15 minutes.",
+        "location": "Tiberias",
+        "rating": 5
+      }
+    ]
+  },
+  "emergency": {
+    "title": "Need Emergency Transport?",
+    "subtitle": "Our accessible taxi is available 24/7 for urgent medical appointments or emergencies.",
+    "callButton": "Call Emergency Line",
+    "whatsapp": "WhatsApp",
+    "availability": "24/7 Availability"
+  },
+  "booking": {
+    "sectionTitle": "Book Your Accessible Ride",
+    "sectionSubtitle": "Complete the form below to schedule your accessible taxi service. We'll confirm your booking promptly.",
+    "infoTitle": "Booking Information",
+    "available247": "Available 24/7",
+    "available247Desc": "Service available at all hours for your convenience",
+    "advanceBooking": "Advance Booking",
+    "advanceBookingDesc": "Reserve up to 30 days in advance for planned trips",
+    "emergencyService": "Emergency Service",
+    "emergencyServiceDesc": "Urgent transport for medical or emergency situations",
+    "immediateAssistance": "For immediate assistance:",
+    "whatsappButton": "Chat on WhatsApp",
+    "fields": {
+      "name": "Full Name",
+      "namePlaceholder": "Your full name",
+      "phone": "Phone Number",
+      "phonePlaceholder": "+972 XX XXX XXXX",
+      "email": "Email Address",
+      "emailPlaceholder": "your@email.com",
+      "date": "Date",
+      "time": "Time",
+      "pickup": "Pickup Address",
+      "pickupPlaceholder": "Enter your pickup location",
+      "destination": "Destination",
+      "destinationPlaceholder": "Enter your destination",
+      "passengers": "Number of Passengers",
+      "wheelchairs": "Wheelchairs",
+      "notes": "Additional Notes",
+      "notesPlaceholder": "Any special requirements or information"
+    },
+    "submit": "Book Your Ride",
+    "submitting": "Opening WhatsApp...",
+    "successTitle": "Almost Done!",
+    "successDesc": "We've opened WhatsApp with your booking details filled in. Please tap Send there to deliver your request to us.",
+    "bookAnother": "Book Another Ride",
+    "errors": {
+      "name": "Name is required",
+      "phone": "Phone number is required",
+      "phoneInvalid": "Please enter a valid phone number",
+      "emailInvalid": "Please enter a valid email address",
+      "pickup": "Pickup address is required",
+      "destination": "Destination is required",
+      "date": "Date is required",
+      "time": "Time is required"
+    },
+    "whatsappTitle": "New Booking Request",
+    "whatsappLabels": {
+      "name": "Name",
+      "phone": "Phone",
+      "email": "Email",
+      "pickup": "Pickup",
+      "destination": "Destination",
+      "date": "Date",
+      "time": "Time",
+      "passengers": "Passengers",
+      "wheelchairs": "Wheelchairs",
+      "notes": "Notes"
+    }
   },
   "services": {
     "title": "Our Services",
@@ -30,6 +289,30 @@
     "name": "Johnny",
     "phone": "054-592-8999",
     "location": "Haifa, Israel",
-    "available": "Available 24/7"
+    "available": "Available 24/7",
+    "whatsappTitle": "WhatsApp",
+    "chatWithUs": "Chat with us"
+  },
+  "footer": {
+    "brand": "AccessiTaxi",
+    "tagline": "Professional accessible taxi service providing reliable and comfortable transportation across Haifa and the North.",
+    "license": "Israeli Ministry of Transportation License #12345",
+    "quickLinks": "Quick Links",
+    "contactTitle": "Contact",
+    "subscribeTitle": "Subscribe for Updates",
+    "subscribeDesc": "Get notified about new services and special offers.",
+    "emailPlaceholder": "Your email address",
+    "subscribeButton": "Subscribe",
+    "rights": "All rights reserved.",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "accessibility": "Accessibility",
+    "madeWith": "Made with",
+    "madeFor": "for accessible transportation in Haifa and the North"
+  },
+  "language": {
+    "en": "English",
+    "he": "עברית",
+    "ar": "العربية"
   }
 }
