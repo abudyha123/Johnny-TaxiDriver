@@ -30,8 +30,8 @@ const ServiceAreas: React.FC = () => {
           <div className="bg-white rounded-xl shadow-md overflow-hidden card-hover">
             <div className="relative aspect-video">
               <img
-                src="https://images.pexels.com/photos/1468937/pexels-photo-1468937.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
-                alt="Map of Northern Israel showing service areas"
+                src="https://images.pexels.com/photos/13820719/pexels-photo-13820719.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
+                alt="Aerial view of Haifa - Johnny Taxi service area"
                 className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-gray-900 to-transparent opacity-60"></div>
