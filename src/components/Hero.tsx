@@ -72,11 +72,11 @@ const Hero: React.FC = () => {
           </div>
 
           <div className="relative animate-fadeIn">
-            <div className="relative rounded-2xl overflow-hidden shadow-2xl border-4 border-white/10">
+            <div className="relative rounded-2xl overflow-hidden shadow-2xl border-4 border-white/10 aspect-[3/4] after:content-[''] after:absolute after:left-[62%] after:top-[62%] after:w-[25%] after:h-[9%] after:rounded after:backdrop-blur-md after:bg-black/50">
               <img
                 src="/images/vehicle-front.jpg"
                 alt="Johnny Taxi - wheelchair accessible vehicle"
-                className="w-full h-64 md:h-80 lg:h-[420px] object-cover"
+                className="w-full h-full object-cover object-[center_15%]"
               />
             </div>
             <div className="absolute -bottom-6 start-6 bg-white text-gray-900 rounded-xl shadow-xl px-5 py-3 flex items-center gap-3">
