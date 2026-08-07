@@ -13,18 +13,18 @@ const Testimonials: React.FC = () => {
           Real experiences from people who rely on our accessible taxi service throughout Israel.
         </p>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {TESTIMONIALS.map((testimonial) => (
-          <div 
-            key={testimonial.id} 
-            className="bg-white rounded-xl shadow-md p-6 border-l-4 border-yellow-500 hover:shadow-lg transition-shadow duration-300"
+          <div
+            key={testimonial.id}
+            className="group bg-white rounded-xl shadow-md p-6 border-l-4 border-yellow-500 card-hover"
           >
             <div className="flex items-start mb-4">
-              <Quote className="text-yellow-400 mr-3 flex-shrink-0" size={24} />
+              <Quote className="text-yellow-400 mr-3 flex-shrink-0 transition-transform duration-300 group-hover:scale-125 group-hover:rotate-6" size={24} />
               <p className="text-gray-700 italic">{testimonial.content}</p>
             </div>
-            
+
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium text-gray-900">{testimonial.name}</p>
@@ -35,10 +35,10 @@ const Testimonials: React.FC = () => {
           </div>
         ))}
       </div>
-      
+
       <div className="mt-16 text-center">
-        <a 
-          href="#booking" 
+        <a
+          href="#booking"
           className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium transition-colors"
           onClick={(e) => {
             e.preventDefault();
