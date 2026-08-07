@@ -1,6 +1,6 @@
 import React from 'react';
 import Section from './ui/Section';
-import { Phone, Mail, MapPin, MessageCircle } from 'lucide-react';
+import { Phone, MapPin, MessageCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 const Contact: React.FC = () => {
@@ -19,7 +19,7 @@ const Contact: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
           <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100 card-hover">
             <div className="flex items-center mb-6">
-              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center me-3">
                 <Phone className="text-blue-600" size={18} />
               </div>
               <div>
@@ -40,11 +40,11 @@ const Contact: React.FC = () => {
 
           <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100 card-hover">
             <div className="flex items-center mb-6">
-              <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center mr-3">
+              <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center me-3">
                 <MessageCircle className="text-green-600" size={18} />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">WhatsApp</h3>
+                <h3 className="text-lg font-semibold text-gray-900">{t('contact.whatsappTitle')}</h3>
                 <p className="text-gray-600">{t('contact.available')}</p>
               </div>
             </div>
@@ -56,14 +56,14 @@ const Contact: React.FC = () => {
                 rel="noopener noreferrer"
                 className="block text-lg font-medium text-green-600 hover:text-green-800 transition-colors"
               >
-                Chat with us
+                {t('contact.chatWithUs')}
               </a>
             </div>
           </div>
 
           <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100 card-hover">
             <div className="flex items-center mb-6">
-              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center me-3">
                 <MapPin className="text-blue-600" size={18} />
               </div>
               <div>
