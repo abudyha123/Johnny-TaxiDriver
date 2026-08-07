@@ -47,7 +47,7 @@ const Features: React.FC = () => {
             <img
               src="/images/vehicle-ramp.jpg"
               alt="Johnny Taxi - accessible vehicle with manual wheelchair ramp"
-              className="w-full md:w-64 h-48 object-cover transition-transform duration-500 hover:scale-110"
+              className="w-full md:w-80 aspect-[3/4] object-cover object-[center_78%] transition-transform duration-500 hover:scale-105"
             />
           </div>
           <div>
