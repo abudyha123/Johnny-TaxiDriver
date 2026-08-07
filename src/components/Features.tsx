@@ -37,27 +37,27 @@ const Features: React.FC = () => {
           <div className="mb-6 md:mb-0 md:mr-8 overflow-hidden rounded-lg shadow-md">
             <img
               src="https://images.pexels.com/photos/4498362/pexels-photo-4498362.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
-              alt="Accessible taxi with ramp"
+              alt="Accessible taxi with manual ramp"
               className="w-full md:w-64 h-48 object-cover transition-transform duration-500 hover:scale-110"
             />
           </div>
           <div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Our Vehicles</h3>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Our Vehicle</h3>
             <p className="text-gray-700 mb-4">
-              Our fleet features specially modified vehicles with:
+              Our vehicle is specially equipped with:
             </p>
             <ul className="text-gray-700 space-y-2">
               <li className="flex items-start">
                 <span className="text-yellow-500 mr-2">✓</span>
-                Hydraulic wheelchair ramps and lifts
+                Manual wheelchair ramp for safe, easy boarding
               </li>
               <li className="flex items-start">
                 <span className="text-yellow-500 mr-2">✓</span>
-                Secure wheelchair locking systems
+                Secure wheelchair locking system
               </li>
               <li className="flex items-start">
                 <span className="text-yellow-500 mr-2">✓</span>
-                Extra spacious interiors with climate control
+                Extra spacious interior with climate control
               </li>
               <li className="flex items-start">
                 <span className="text-yellow-500 mr-2">✓</span>
