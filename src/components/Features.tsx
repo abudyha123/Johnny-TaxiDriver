@@ -45,8 +45,8 @@ const Features: React.FC = () => {
         <div className="flex flex-col md:flex-row items-center">
           <div className="mb-6 md:mb-0 md:me-8 overflow-hidden rounded-lg shadow-md">
             <img
-              src="https://images.pexels.com/photos/4498362/pexels-photo-4498362.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
-              alt="Accessible taxi with manual ramp"
+              src="/images/vehicle-ramp.jpg"
+              alt="Johnny Taxi - accessible vehicle with manual wheelchair ramp"
               className="w-full md:w-64 h-48 object-cover transition-transform duration-500 hover:scale-110"
             />
           </div>
