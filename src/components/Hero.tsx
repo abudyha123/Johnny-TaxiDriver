@@ -1,6 +1,6 @@
 import React from 'react';
 import Button from './ui/Button';
-import { CalendarClock, Phone } from 'lucide-react';
+import { CalendarClock, Phone, MessageCircle } from 'lucide-react';
 
 const Hero: React.FC = () => {
   return (
@@ -24,14 +24,14 @@ const Hero: React.FC = () => {
       <div className="container mx-auto px-4 md:px-6 relative z-10">
         <div className="max-w-3xl">
           <div className="inline-block px-4 py-1 rounded-full bg-yellow-500 text-gray-900 font-semibold text-sm mb-6 animate-fadeIn">
-            Accessible Transportation Across Israel
+            Accessible Transportation in Haifa & the North
           </div>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight animate-slideUp">
             Mobility For Everyone, <br />
             <span className="text-gradient">Everywhere</span>
           </h1>
           <p className="text-lg md:text-xl text-gray-200 mb-8 max-w-2xl animate-slideUp animation-delay-100">
-            Professional wheelchair-accessible taxi service serving all major cities in Israel.
+            Professional wheelchair-accessible taxi service serving Haifa, the entire North region, and transfers to and from Ben Gurion Airport.
             Available 24/7 for both scheduled appointments and emergency transportation.
           </p>
 
@@ -52,7 +52,7 @@ const Hero: React.FC = () => {
               variant="outline"
               size="lg"
               onClick={() => {
-                window.location.href = 'tel:+9721234567';
+                window.location.href = 'tel:+972545928999';
               }}
               className="flex items-center justify-center !text-white !border-white hover:!bg-white/10"
             >
@@ -61,7 +61,17 @@ const Hero: React.FC = () => {
             </Button>
           </div>
 
-          <div className="mt-12 flex items-center text-gray-200 animate-slideUp animation-delay-300">
+          <a
+            href="https://wa.me/972545928999"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center text-green-400 hover:text-green-300 font-medium mt-6 animate-slideUp animation-delay-200"
+          >
+            <MessageCircle size={18} className="mr-2" />
+            Chat with us on WhatsApp
+          </a>
+
+          <div className="mt-8 flex items-center text-gray-200 animate-slideUp animation-delay-300">
             <div className="w-12 h-0.5 bg-yellow-500 mr-4"></div>
             <p className="text-sm font-medium">Israeli Ministry of Transportation Approved</p>
           </div>
