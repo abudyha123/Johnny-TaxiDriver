@@ -1,20 +1,20 @@
 import { Feature, ServiceArea, Testimonial } from '../types';
-import { 
-  Accessibility, 
-  Clock, 
-  MapPin, 
-  CreditCard, 
-  Phone, 
-  Shield, 
-  Car, 
-  CalendarClock 
+import {
+  Accessibility,
+  Clock,
+  MapPin,
+  CreditCard,
+  Phone,
+  Shield,
+  Car,
+  CalendarClock
 } from 'lucide-react';
 
 export const FEATURES: Feature[] = [
   {
     id: 1,
     title: 'Wheelchair Accessible',
-    description: 'Specially equipped vehicles with ramps and securing systems for safe wheelchair transport.',
+    description: 'Vehicle equipped with a manual wheelchair ramp and secure locking system for safe, comfortable transport.',
     icon: 'Accessibility'
   },
   {
@@ -25,8 +25,8 @@ export const FEATURES: Feature[] = [
   },
   {
     id: 3,
-    title: 'Nationwide Coverage',
-    description: 'Serving major cities and communities throughout Israel.',
+    title: 'Northern Israel Coverage',
+    description: 'Serving Haifa, the entire North region, and transfers to and from Ben Gurion Airport.',
     icon: 'MapPin'
   },
   {
@@ -44,47 +44,47 @@ export const FEATURES: Feature[] = [
   {
     id: 6,
     title: 'Licensed & Insured',
-    description: 'All drivers are professionally licensed and fully insured for your peace of mind.',
+    description: 'Professionally licensed and fully insured for your peace of mind.',
     icon: 'Shield'
   }
 ];
 
 export const SERVICE_AREAS: ServiceArea[] = [
-  { id: 1, name: 'Tel Aviv', description: 'Full service throughout Tel Aviv and surrounding suburbs.' },
-  { id: 2, name: 'Jerusalem', description: 'Complete coverage of Jerusalem including the Old City and all neighborhoods.' },
-  { id: 3, name: 'Haifa', description: 'Serving Haifa and the northern coastal region.' },
-  { id: 4, name: 'Beersheba', description: 'Available throughout Beersheba and the southern region.' },
-  { id: 5, name: 'Netanya', description: 'Full service in Netanya and nearby coastal communities.' },
-  { id: 6, name: 'Eilat', description: 'Serving the Eilat region and southern border communities.' }
+  { id: 1, name: 'Ben Gurion Airport', description: 'Reliable accessible transfers to and from Ben Gurion Airport, any time of day or night.' },
+  { id: 2, name: 'Haifa', description: 'Full accessible taxi service throughout Haifa and the surrounding metropolitan area.' },
+  { id: 3, name: 'Krayot', description: 'Serving Kiryat Ata, Kiryat Bialik, Kiryat Motzkin and the rest of the Krayot area.' },
+  { id: 4, name: 'Akko', description: 'Accessible transportation throughout Akko (Acre) and the western Galilee coast.' },
+  { id: 5, name: 'Nahariya', description: 'Covering Nahariya and the northern coastal communities.' },
+  { id: 6, name: 'Tiberias', description: 'Serving Tiberias and communities around the Sea of Galilee.' }
 ];
 
 export const TESTIMONIALS: Testimonial[] = [
   {
     id: 1,
     name: 'David Cohen',
-    content: 'The accessible taxi service has been a lifesaver for my mother. The drivers are always punctual and extremely helpful with her wheelchair.',
-    location: 'Jerusalem',
+    content: 'The accessible taxi service has been a lifesaver for my mother. The driver is always punctual and extremely helpful with her wheelchair.',
+    location: 'Haifa',
     rating: 5
   },
   {
     id: 2,
     name: 'Sarah Levy',
-    content: 'I rely on this service for all my medical appointments. The vehicles are clean, modern, and the ramp system makes boarding so much easier.',
-    location: 'Tel Aviv',
+    content: 'I rely on this service for all my medical appointments. The vehicle is clean, comfortable, and the ramp makes boarding so much easier.',
+    location: 'Krayot',
     rating: 5
   },
   {
     id: 3,
     name: 'Mohammed Amir',
     content: 'Excellent service that has made traveling much more accessible for my family. Highly recommended for anyone with mobility needs.',
-    location: 'Haifa',
+    location: 'Nahariya',
     rating: 4
   },
   {
     id: 4,
     name: 'Rachel Goldstein',
     content: 'The emergency service is remarkable. When I needed urgent transport for my grandfather, they arrived within 15 minutes.',
-    location: 'Netanya',
+    location: 'Tiberias',
     rating: 5
   }
 ];
