@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Menu, X, GripHorizontal, Phone, MessageCircle } from 'lucide-react';
 import Button from './ui/Button';
+import LanguageSwitcher from './LanguageSwitcher';
 
 const Header: React.FC = () => {
+  const { t } = useTranslation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -27,7 +30,7 @@ const Header: React.FC = () => {
   };
 
   const navLinkClass =
-    "relative text-gray-800 hover:text-yellow-500 font-medium transition-colors after:content-[''] after:absolute after:left-0 after:-bottom-1 after:w-0 after:h-0.5 after:bg-yellow-500 after:transition-all after:duration-300 hover:after:w-full";
+    "relative text-gray-800 hover:text-yellow-500 font-medium transition-colors after:content-[''] after:absolute after:start-0 after:-bottom-1 after:w-0 after:h-0.5 after:bg-yellow-500 after:transition-all after:duration-300 hover:after:w-full";
 
   return (
     <header
@@ -39,7 +42,7 @@ const Header: React.FC = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center group cursor-pointer">
             <GripHorizontal
-              className="text-yellow-500 mr-2 transition-transform duration-500 group-hover:rotate-180"
+              className="text-yellow-500 me-2 transition-transform duration-500 group-hover:rotate-180"
               size={28}
             />
             <span className="font-bold text-xl md:text-2xl text-gray-900">
@@ -49,27 +52,28 @@ const Header: React.FC = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <a href="#services" className={navLinkClass}>Services</a>
-            <a href="#areas" className={navLinkClass}>Service Areas</a>
-            <a href="#testimonials" className={navLinkClass}>Testimonials</a>
-            <a href="#booking" className={navLinkClass}>Book Now</a>
-            <a href="#contact" className={navLinkClass}>Contact</a>
+            <a href="#services" className={navLinkClass}>{t('header.services')}</a>
+            <a href="#areas" className={navLinkClass}>{t('header.areas')}</a>
+            <a href="#testimonials" className={navLinkClass}>{t('header.testimonials')}</a>
+            <a href="#booking" className={navLinkClass}>{t('header.bookNow')}</a>
+            <a href="#contact" className={navLinkClass}>{t('header.contact')}</a>
           </nav>
 
           <div className="hidden md:flex items-center">
-            <a href="tel:+972545928999" className="flex items-center mr-3 text-blue-600 hover:text-blue-800 font-medium transition-transform hover:scale-105">
-              <Phone size={18} className="mr-1" />
-              <span>Call Now</span>
+            <a href="tel:+972545928999" className="flex items-center me-3 text-blue-600 hover:text-blue-800 font-medium transition-transform hover:scale-105">
+              <Phone size={18} className="me-1" />
+              <span>{t('header.callNow')}</span>
             </a>
             <a
               href="https://wa.me/972545928999"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center mr-4 text-green-600 hover:text-green-700 font-medium transition-transform hover:scale-105"
+              className="flex items-center me-4 text-green-600 hover:text-green-700 font-medium transition-transform hover:scale-105"
             >
-              <MessageCircle size={18} className="mr-1" />
-              <span>WhatsApp</span>
+              <MessageCircle size={18} className="me-1" />
+              <span>{t('header.whatsapp')}</span>
             </a>
+            <LanguageSwitcher className="me-4" />
             <Button
               variant="primary"
               size="md"
@@ -78,18 +82,21 @@ const Header: React.FC = () => {
                 bookingSection?.scrollIntoView({ behavior: 'smooth' });
               }}
             >
-              Book a Ride
+              {t('header.bookARide')}
             </Button>
           </div>
 
           {/* Mobile Menu Button */}
-          <button
-            className="md:hidden text-gray-800 hover:text-yellow-500 transition-colors"
-            onClick={toggleMenu}
-            aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
-          >
-            {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
+          <div className="md:hidden flex items-center gap-2">
+            <LanguageSwitcher />
+            <button
+              className="text-gray-800 hover:text-yellow-500 transition-colors"
+              onClick={toggleMenu}
+              aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
+            >
+              {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
         </div>
 
         {/* Mobile Menu */}
@@ -101,35 +108,35 @@ const Header: React.FC = () => {
                 className="text-gray-800 hover:text-yellow-500 font-medium transition-colors py-2"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Services
+                {t('header.services')}
               </a>
               <a
                 href="#areas"
                 className="text-gray-800 hover:text-yellow-500 font-medium transition-colors py-2"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Service Areas
+                {t('header.areas')}
               </a>
               <a
                 href="#testimonials"
                 className="text-gray-800 hover:text-yellow-500 font-medium transition-colors py-2"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Testimonials
+                {t('header.testimonials')}
               </a>
               <a
                 href="#booking"
                 className="text-gray-800 hover:text-yellow-500 font-medium transition-colors py-2"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Book Now
+                {t('header.bookNow')}
               </a>
               <a
                 href="#contact"
                 className="text-gray-800 hover:text-yellow-500 font-medium transition-colors py-2"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Contact
+                {t('header.contact')}
               </a>
               <Button
                 variant="primary"
@@ -141,14 +148,14 @@ const Header: React.FC = () => {
                   bookingSection?.scrollIntoView({ behavior: 'smooth' });
                 }}
               >
-                Book a Ride
+                {t('header.bookARide')}
               </Button>
               <a
                 href="tel:+972545928999"
                 className="flex items-center justify-center text-blue-600 hover:text-blue-800 font-medium py-2"
               >
-                <Phone size={18} className="mr-1" />
-                <span>Call Now: 054-592-8999</span>
+                <Phone size={18} className="me-1" />
+                <span>{t('header.callNow')}: 054-592-8999</span>
               </a>
               <a
                 href="https://wa.me/972545928999"
@@ -156,8 +163,8 @@ const Header: React.FC = () => {
                 rel="noopener noreferrer"
                 className="flex items-center justify-center text-green-600 hover:text-green-700 font-medium py-2"
               >
-                <MessageCircle size={18} className="mr-1" />
-                <span>WhatsApp: 054-592-8999</span>
+                <MessageCircle size={18} className="me-1" />
+                <span>{t('header.whatsapp')}: 054-592-8999</span>
               </a>
             </nav>
           </div>
