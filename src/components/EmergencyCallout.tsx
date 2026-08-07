@@ -1,8 +1,11 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import Button from './ui/Button';
 import { Phone, Clock, MessageCircle } from 'lucide-react';
 
 const EmergencyCallout: React.FC = () => {
+  const { t } = useTranslation();
+
   return (
     <div className="bg-blue-600 text-white py-10 relative overflow-hidden">
       {/* Yellow diagonal element */}
@@ -13,13 +16,13 @@ const EmergencyCallout: React.FC = () => {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between">
             <div className="mb-6 md:mb-0">
               <div className="flex items-center">
-                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mr-4 shadow-md">
+                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center me-4 shadow-md">
                   <Phone className="text-blue-600" size={24} />
                 </div>
-                <h3 className="text-2xl md:text-3xl font-bold">Need Emergency Transport?</h3>
+                <h3 className="text-2xl md:text-3xl font-bold">{t('emergency.title')}</h3>
               </div>
-              <p className="text-blue-100 mt-2 md:text-lg pl-16">
-                Our accessible taxi is available 24/7 for urgent medical appointments or emergencies.
+              <p className="text-blue-100 mt-2 md:text-lg ps-16">
+                {t('emergency.subtitle')}
               </p>
             </div>
 
@@ -32,8 +35,8 @@ const EmergencyCallout: React.FC = () => {
                 }}
                 className="flex items-center justify-center"
               >
-                <Phone size={20} className="mr-2" />
-                Call Emergency Line
+                <Phone size={20} className="me-2" />
+                {t('emergency.callButton')}
               </Button>
               <a
                 href="https://wa.me/972545928999"
@@ -41,12 +44,12 @@ const EmergencyCallout: React.FC = () => {
                 rel="noopener noreferrer"
                 className="flex items-center justify-center bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
               >
-                <MessageCircle size={20} className="mr-2" />
-                WhatsApp
+                <MessageCircle size={20} className="me-2" />
+                {t('emergency.whatsapp')}
               </a>
               <div className="hidden md:flex items-center text-blue-100">
-                <Clock size={20} className="mr-2 text-yellow-400" />
-                <span>24/7 Availability</span>
+                <Clock size={20} className="me-2 text-yellow-400" />
+                <span>{t('emergency.availability')}</span>
               </div>
             </div>
           </div>
