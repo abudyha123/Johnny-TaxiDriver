@@ -1,5 +1,5 @@
 import React from 'react';
-import { GripHorizontal, Heart } from 'lucide-react';
+import { GripHorizontal, Heart, MessageCircle } from 'lucide-react';
 
 const Footer: React.FC = () => {
   return (
@@ -14,7 +14,7 @@ const Footer: React.FC = () => {
                 <span className="font-bold text-xl">AccessiTaxi</span>
               </div>
               <p className="text-gray-400 mb-4">
-                Professional accessible taxi service providing reliable and comfortable transportation across Israel.
+                Professional accessible taxi service providing reliable and comfortable transportation across Haifa and the North.
               </p>
               <p className="text-gray-400 text-sm">
                 Israeli Ministry of Transportation License #12345
@@ -46,11 +46,21 @@ const Footer: React.FC = () => {
               <h4 className="text-lg font-medium mb-4">Contact</h4>
               <ul className="space-y-2">
                 <li className="text-gray-400">
-                  <span className="block">123 Rothschild Boulevard</span>
-                  <span className="block">Tel Aviv, Israel</span>
+                  <span className="block">Haifa, Israel</span>
                 </li>
                 <li>
-                  <a href="tel:+9721234567" className="text-gray-400 hover:text-white transition-colors">+972-123-4567</a>
+                  <a href="tel:+972545928999" className="text-gray-400 hover:text-white transition-colors">054-592-8999</a>
+                </li>
+                <li>
+                  <a
+                    href="https://wa.me/972545928999"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-green-400 hover:text-green-300 transition-colors flex items-center"
+                  >
+                    <MessageCircle size={14} className="mr-1" />
+                    WhatsApp
+                  </a>
                 </li>
                 <li>
                   <a href="mailto:info@accessitaxi.co.il" className="text-gray-400 hover:text-white transition-colors">info@accessitaxi.co.il</a>
@@ -91,7 +101,7 @@ const Footer: React.FC = () => {
           <div className="text-center text-gray-500 text-xs mt-8 flex items-center justify-center">
             <span>Made with</span>
             <Heart size={12} className="mx-1 text-red-500" />
-            <span>for accessible transportation in Israel</span>
+            <span>for accessible transportation in Haifa and the North</span>
           </div>
         </div>
       </div>
