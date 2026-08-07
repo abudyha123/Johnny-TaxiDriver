@@ -3,13 +3,14 @@ import { GripHorizontal, Heart } from 'lucide-react';
 
 const Footer: React.FC = () => {
   return (
-    <footer className="bg-gray-900 text-white">
+    <footer className="relative bg-gray-900 text-white">
+      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600"></div>
       <div className="container mx-auto px-4 md:px-6 py-12">
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8 mb-8">
             <div className="col-span-1">
               <div className="flex items-center mb-4">
-                <GripHorizontal className="text-yellow-500 mr-2" size={24} />
+                <GripHorizontal className="text-yellow-500 mr-2 transition-transform duration-500 hover:rotate-180" size={24} />
                 <span className="font-bold text-xl">AccessiTaxi</span>
               </div>
               <p className="text-gray-400 mb-4">
@@ -19,7 +20,7 @@ const Footer: React.FC = () => {
                 Israeli Ministry of Transportation License #12345
               </p>
             </div>
-            
+
             <div>
               <h4 className="text-lg font-medium mb-4">Quick Links</h4>
               <ul className="space-y-2">
@@ -40,7 +41,7 @@ const Footer: React.FC = () => {
                 </li>
               </ul>
             </div>
-            
+
             <div>
               <h4 className="text-lg font-medium mb-4">Contact</h4>
               <ul className="space-y-2">
@@ -56,26 +57,26 @@ const Footer: React.FC = () => {
                 </li>
               </ul>
             </div>
-            
+
             <div className="md:col-span-3 lg:col-span-1">
               <h4 className="text-lg font-medium mb-4">Subscribe for Updates</h4>
               <p className="text-gray-400 mb-4">Get notified about new services and special offers.</p>
               <form className="flex">
-                <input 
-                  type="email" 
-                  placeholder="Your email address" 
+                <input
+                  type="email"
+                  placeholder="Your email address"
                   className="px-4 py-2 w-full bg-gray-800 border border-gray-700 rounded-l-md focus:outline-none focus:ring-2 focus:ring-yellow-500 text-white"
                 />
-                <button 
-                  type="submit" 
-                  className="bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded-r-md font-medium transition-colors text-gray-900"
+                <button
+                  type="submit"
+                  className="bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded-r-md font-medium transition-all duration-300 text-gray-900 hover:shadow-glow"
                 >
                   Subscribe
                 </button>
               </form>
             </div>
           </div>
-          
+
           <div className="pt-8 mt-8 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center">
             <p className="text-gray-400 text-sm mb-4 md:mb-0">
               &copy; {new Date().getFullYear()} AccessiTaxi. All rights reserved.
@@ -86,7 +87,7 @@ const Footer: React.FC = () => {
               <a href="#" className="text-gray-400 hover:text-white transition-colors text-sm">Accessibility</a>
             </div>
           </div>
-          
+
           <div className="text-center text-gray-500 text-xs mt-8 flex items-center justify-center">
             <span>Made with</span>
             <Heart size={12} className="mx-1 text-red-500" />
