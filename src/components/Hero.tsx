@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import Button from './ui/Button';
 import { CalendarClock, Phone, MessageCircle, ShieldCheck } from 'lucide-react';
+
+// Lazy-load the Three.js scene so it doesn't slow down first paint
+const TaxiScene = React.lazy(() => import('./three/TaxiScene'));
 
 const Hero: React.FC = () => {
   const { t } = useTranslation();
@@ -72,12 +75,18 @@ const Hero: React.FC = () => {
           </div>
 
           <div className="relative animate-fadeIn">
-            <div className="relative rounded-2xl overflow-hidden shadow-2xl border-4 border-white/10 aspect-[3/4] after:content-[''] after:absolute after:left-[62%] after:top-[62%] after:w-[25%] after:h-[9%] after:rounded after:backdrop-blur-md after:bg-black/50">
-              <img
-                src="/images/vehicle-front.jpg"
-                alt="Johnny Taxi - wheelchair accessible vehicle"
-                className="w-full h-full object-cover object-[center_15%]"
-              />
+            <div className="relative rounded-2xl overflow-hidden shadow-2xl border-4 border-white/10 aspect-[3/4] sm:aspect-[4/3] lg:aspect-[3/4] bg-[#0b1020]">
+              <Suspense
+                fallback={
+                  <img
+                    src="/images/vehicle-front.jpg"
+                    alt="Johnny Taxi - wheelchair accessible vehicle"
+                    className="w-full h-full object-cover object-[center_15%]"
+                  />
+                }
+              >
+                <TaxiScene />
+              </Suspense>
             </div>
             <div className="absolute -bottom-6 start-6 bg-white text-gray-900 rounded-xl shadow-xl px-5 py-3 flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-yellow-500 flex items-center justify-center flex-shrink-0">
