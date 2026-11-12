@@ -21,7 +21,7 @@ service cloud.firestore {
                               'passengers', 'wheelchair', 'wheelchairCount', 'lang', 'status', 'history', 'createdAt'])
         && d.keys().hasOnly(['v', 'id', 'code', 'name', 'phone', 'phoneKey', 'from', 'to', 'date', 'time',
                              'passengers', 'wheelchair', 'wheelchairCount', 'lang', 'status', 'history', 'createdAt',
-                             'email', 'notes'])
+                             'email', 'notes', 'trackToken'])
         && d.v == 1
         && d.id == id && id.matches('^[A-Za-z0-9-]{8,64}$')
         && d.code is string && d.code.matches('^JT-[A-Z2-9]{5}$')
@@ -41,7 +41,15 @@ service cloud.firestore {
         && d.lang in ['he', 'en', 'ar']
         && d.status == 'new'
         && d.history == []
-        && d.createdAt == request.time;
+        && d.createdAt == request.time
+        // trackToken is optional so that forms built before tracking keep working
+        && (!('trackToken' in d) || validTrackingPair(id, d));
+    }
+
+    // The request's public tracking document must be created in the same batch.
+    function validTrackingPair(id, d) {
+      return d.trackToken is string && d.trackToken.matches('^[A-Za-z0-9_-]{43}$')
+        && getAfter(/databases/$(database)/documents/tracking/$(d.trackToken)).data.rid == id;
     }
 
     // UTC day number; the client sends the same key (see firestoreStore.ts).
@@ -74,9 +82,45 @@ service cloud.firestore {
             || request.resource.data.history[0:resource.data.history.size()] == resource.data.history)
         && validHistoryEntry(request.resource.data.history[resource.data.history.size()], request.resource.data.status)
         && request.resource.data.updatedAt == request.time
-        && request.resource.data.updatedBy == request.auth.token.email;
+        && request.resource.data.updatedBy == request.auth.token.email
+        // the customer-visible status must change in the same batch, to the same value
+        && (!('trackToken' in resource.data)
+            || getAfter(/databases/$(database)/documents/tracking/$(resource.data.trackToken)).data.status == request.resource.data.status);
 
       allow delete: if false;
+    }
+
+    // ---------- customer tracking (public by unguessable link) ----------
+    // Document id = a 256-bit random token. It holds only: request code, status, times.
+    // No name, phone, addresses, accessibility details or admin history.
+    match /tracking/{token} {
+      // Anyone holding the exact link may read it until it expires. No listing, so
+      // tokens can't be discovered; the short request code grants nothing.
+      allow get: if request.time < resource.data.expiresAt;
+      allow list, delete: if false;
+
+      allow create: if token.matches('^[A-Za-z0-9_-]{43}$')
+        && request.resource.data.keys().hasOnly(['v', 'rid', 'code', 'status', 'createdAt', 'updatedAt', 'expiresAt'])
+        && request.resource.data.keys().hasAll(['v', 'rid', 'code', 'status', 'createdAt', 'updatedAt', 'expiresAt'])
+        && request.resource.data.v == 1
+        && request.resource.data.status == 'new'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.expiresAt is timestamp
+        && request.resource.data.expiresAt > request.time + duration.value(1, 'd')
+        && request.resource.data.expiresAt < request.time + duration.value(121, 'd')
+        && request.resource.data.rid is string
+        // only together with a brand-new request that points back to this token
+        && !exists(/databases/$(database)/documents/requests/$(request.resource.data.rid))
+        && getAfter(/databases/$(database)/documents/requests/$(request.resource.data.rid)).data.trackToken == token
+        && getAfter(/databases/$(database)/documents/requests/$(request.resource.data.rid)).data.code == request.resource.data.code;
+
+      // Only an admin, only status + time, and only in step with the request itself.
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+        && request.resource.data.status in ['new', 'in_progress', 'confirmed', 'cancelled', 'completed']
+        && request.resource.data.updatedAt == request.time
+        && getAfter(/databases/$(database)/documents/requests/$(resource.data.rid)).data.status == request.resource.data.status;
     }
 
     function validHistoryEntry(h, status) {

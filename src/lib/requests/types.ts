@@ -32,10 +32,46 @@ export type RideRequest = {
   lang: string;
   status: RequestStatus;
   history: StatusChange[];
+  trackToken?: string;        // secret for the customer's tracking link (admin-only on the request)
   demo?: boolean;
 };
 
-export type NewRideRequest = Omit<RideRequest, 'status' | 'history' | 'createdAt'>;
+export type NewRideRequest = Omit<RideRequest, 'status' | 'history' | 'createdAt' | 'trackToken'>;
+
+/**
+ * What the customer's tracking link can see – deliberately minimal: no name, phone,
+ * addresses, accessibility details or admin history.
+ */
+export type TrackingInfo = { code: string; status: RequestStatus; updatedAt: string; expiresAt: string };
+
+export type TrackingState =
+  | { kind: 'loading' }
+  | { kind: 'live'; info: TrackingInfo; verifiedAt: string }           // confirmed by the server just now
+  | { kind: 'stale'; info: TrackingInfo; verifiedAt: string }          // connection lost – last known only
+  | { kind: 'offline' }                                                // never reached the server
+  | { kind: 'notFound' };                                              // wrong or expired link
+
+/** 32 random bytes, base64url (43 chars). Unguessable; this – not the short code – grants access. */
+export function newTrackToken(): string {
+  const b = new Uint8Array(32);
+  crypto.getRandomValues(b);
+  let s = '';
+  b.forEach((x) => (s += String.fromCharCode(x)));
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/** The link stays valid until 7 days after the ride (at least 2 days, at most 120 days from now). */
+export function trackExpiry(date: string, time: string, now = Date.now()): Date {
+  const ride = new Date(`${date}T${time || '23:59'}`).getTime();
+  const DAY = 86400000;
+  const want = isNaN(ride) ? now + 30 * DAY : ride + 7 * DAY;
+  return new Date(Math.min(Math.max(want, now + 2 * DAY), now + 120 * DAY));
+}
+
+export function trackUrl(token: string, lang: string, origin = window.location.origin): string {
+  // token in the #fragment: browsers never send it to the server or in the Referer header
+  return `${origin}/track?l=${encodeURIComponent(lang)}#${token}`;
+}
 
 export function newRequestId(): string {
   const c = globalThis.crypto as Crypto | undefined;

@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test:rules": "npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-johnny-taxi-rules \"node --test tests/firestore.rules.test.mjs\""
+    "test:rules": "npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-johnny-taxi-rules \"node --test tests/firestore.rules.test.mjs\"",
+    "test:e2e": "npx --yes firebase-tools@14 emulators:exec --only firestore,auth --project demo-johnny-taxi-e2e \"node tests/e2e/run.mjs\""
   },
   "dependencies": {
     "@react-three/fiber": "^8.18.0",

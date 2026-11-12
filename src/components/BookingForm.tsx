@@ -6,7 +6,9 @@ import Button from './ui/Button';
 import { AlertTriangle, CalendarClock, CheckCircle2, Clock, MessageCircle, Phone } from 'lucide-react';
 import { BookingFormData } from '../types';
 import { getRequestStore, REQUESTS_MODE } from '../lib/requests/store';
-import { newRequestId, shortCode } from '../lib/requests/types';
+import { newRequestId, shortCode, trackUrl } from '../lib/requests/types';
+import TrackingStatus, { useTracking } from './TrackingStatus';
+import TrackLinkActions from './TrackLinkActions';
 
 const WHATSAPP_NUMBER = '972545928999';
 
@@ -34,6 +36,8 @@ const BookingForm: React.FC = () => {
   const inFlight = useRef(false);
   // 'saved' is set ONLY after the server confirmed the write – never optimistically
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle');
+  const [trackToken, setTrackToken] = useState<string | null>(null);
+  const tracking = useTracking(saveState === 'saved' ? trackToken : null);
   const code = shortCode(requestIdRef.current);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -125,7 +129,7 @@ const BookingForm: React.FC = () => {
     setSaveState('saving');
     try {
       const store = await getRequestStore();
-      await store.create({
+      const res = await store.create({
         id: requestIdRef.current,
         code,
         name: formData.name.trim(),
@@ -141,6 +145,7 @@ const BookingForm: React.FC = () => {
         notes: formData.notes.trim() || undefined,
         lang: ['he', 'en', 'ar'].includes(i18n.language) ? i18n.language : 'he',
       });
+      setTrackToken(res.trackToken || null);
       setSaveState('saved');
     } catch {
       setSaveState('failed'); // nothing is claimed; the customer gets WhatsApp / phone instead
@@ -148,7 +153,10 @@ const BookingForm: React.FC = () => {
       inFlight.current = false;
       setIsSubmitting(false);
       setSubmitSuccess(true);
-      requestAnimationFrame(() => document.getElementById('booking-result')?.scrollIntoView({ block: 'center' }));
+      requestAnimationFrame(() => {
+        document.getElementById('booking-result')?.scrollIntoView({ block: 'center' });
+        document.getElementById('booking-result-title')?.focus({ preventScroll: true });
+      });
     }
   };
 
@@ -166,6 +174,7 @@ const BookingForm: React.FC = () => {
     setFormData({ name: '', phone: '', email: '', pickupAddress: '', destination: '', date: '', time: '', passengers: 1, wheelchairAccess: '', wheelchairCount: 1, notes: '' });
     setSubmitSuccess(false);
     setSaveState('idle');
+    setTrackToken(null);
     requestIdRef.current = newRequestId(); // a new form = a new request
     inFlight.current = false;
   };
@@ -244,19 +253,29 @@ const BookingForm: React.FC = () => {
 
             <div className="lg:col-span-3 p-8">
               {submitSuccess && saveState === 'saved' ? (
-                <div id="booking-result" className="h-full flex flex-col items-center justify-center text-center animate-fadeIn" role="status" aria-live="polite">
+                <div id="booking-result" className="h-full flex flex-col items-center justify-center text-center animate-fadeIn">
                   <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
                     <CheckCircle2 className="h-8 w-8 text-green-600" aria-hidden="true" />
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">{t('booking.savedTitle')}</h3>
-                  <p className="text-gray-800 mb-2">
-                    {t('booking.requestCode')}: <strong className="ltr-num">{code}</strong>
-                  </p>
+                  <h3 id="booking-result-title" tabIndex={-1} className="text-2xl font-bold text-gray-900 mb-2 outline-none">{t('booking.savedTitle')}</h3>
+                  {!trackToken && (
+                    <p className="text-gray-800 mb-2">
+                      {t('booking.requestCode')}: <strong className="ltr-num">{code}</strong>
+                    </p>
+                  )}
                   {REQUESTS_MODE === 'firebase' && <p className="text-gray-600 mb-3">{t('booking.savedDesc')}</p>}
                   {REQUESTS_MODE === 'demo' && (
                     <p className="text-sm font-semibold text-orange-900 bg-orange-50 border border-orange-200 rounded-md px-3 py-2 mb-3" role="note">
                       {t('booking.demoNote')}
                     </p>
+                  )}
+                  {trackToken && (
+                    <div className="w-full max-w-md mb-4">
+                      <TrackingStatus state={tracking} />
+                      <div className="mt-4">
+                        <TrackLinkActions url={trackUrl(trackToken, i18n.language)} />
+                      </div>
+                    </div>
                   )}
                   <p className="text-sm font-semibold text-gray-800 bg-yellow-50 border border-yellow-200 rounded-md px-3 py-2 mb-6" role="note">
                     {t('booking.disclaimer')}

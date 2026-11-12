@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Phone, MessageCircle, Search, LogOut, RotateCcw, Accessibility, Users, MapPin, Clock, AlertTriangle, ChevronDown } from 'lucide-react';
+import { Phone, MessageCircle, Search, LogOut, RotateCcw, Accessibility, Users, MapPin, Clock, AlertTriangle, ChevronDown, Copy, Info } from 'lucide-react';
 import { getRequestStore, REQUESTS_MODE } from '../lib/requests/store';
 import { resetDemoData } from '../lib/requests/demoStore';
 import { watchAdmin, signIn, signOutAdmin, sendReset, authErrorHe, type AuthState } from './adminAuth';
-import { RideRequest, RequestStatus, STATUSES, STATUS_LABEL_HE, toWhatsAppNumber } from '../lib/requests/types';
+import { RideRequest, RequestStatus, STATUSES, STATUS_LABEL_HE, toWhatsAppNumber, trackUrl } from '../lib/requests/types';
 
 /**
  * Johnny's private request screen (Hebrew, mobile-first).
@@ -41,6 +41,21 @@ function customerWhatsApp(r: RideRequest) {
   // Johnny edits and sends this himself – nothing is sent automatically.
   const text = `שלום ${r.name}, כאן ג׳וני טקסי בנוגע לבקשת הנסיעה ${r.code} (${fmtRide(r)}, ${r.from} ← ${r.to}).`;
   return `https://wa.me/${n}?text=${encodeURIComponent(text)}`;
+}
+
+const LANG_LOCALE: Record<string, string> = { he: 'he-IL', ar: 'ar-IL', en: 'en-GB' };
+function rideWhen(r: RideRequest) {
+  const d = new Date(`${r.date}T${r.time || '00:00'}`);
+  const loc = LANG_LOCALE[r.lang] || 'he-IL';
+  return isNaN(d.getTime()) ? `${r.date} ${r.time}` : `${d.toLocaleDateString(loc, { weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' })} ${r.time}`;
+}
+/** Ready-made confirmation in the customer's language. Johnny sends it himself. */
+function confirmationText(r: RideRequest) {
+  const link = r.trackToken ? trackUrl(r.trackToken, r.lang) : '';
+  const when = rideWhen(r);
+  if (r.lang === 'en') return [`Hello ${r.name}, this is Johnny Taxi.`, `Your ride is confirmed: ${when}.`, `From: ${r.from}`, `To: ${r.to}`, `Request number: ${r.code}`, ...(link ? [`Track your request: ${link}`] : [])].join('\n');
+  if (r.lang === 'ar') return [`مرحبًا ${r.name}، معكم جوني تاكسي.`, `تم تأكيد رحلتكم: ${when}.`, `من: ${r.from}`, `إلى: ${r.to}`, `رقم الطلب: ${r.code}`, ...(link ? [`متابعة الطلب: ${link}`] : [])].join('\n');
+  return [`שלום ${r.name}, כאן ג׳וני טקסי.`, `הנסיעה שלך אושרה: ${when}.`, `מוצא: ${r.from}`, `יעד: ${r.to}`, `מספר בקשה: ${r.code}`, ...(link ? [`מעקב אחר הבקשה: ${link}`] : [])].join('\n');
 }
 
 const Login: React.FC<{ notAllowed?: string }> = ({ notAllowed }) => {
@@ -98,6 +113,8 @@ const RequestCard: React.FC<{ r: RideRequest; dup: boolean; onStatus: (s: Reques
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
   const wa = customerWhatsApp(r);
+  const waNum = toWhatsAppNumber(r.phone);
+  const [copied, setCopied] = useState(false);
   const [err, setErr] = useState('');
   const apply = async (s: RequestStatus) => {
     setBusy(true); setErr('');
@@ -134,9 +151,33 @@ const RequestCard: React.FC<{ r: RideRequest; dup: boolean; onStatus: (s: Reques
         <a href={`tel:${r.phone.replace(/[^\d+]/g, '')}`} className="inline-flex items-center gap-2 min-h-[44px] px-4 rounded-xl border border-gray-300 font-bold text-gray-800"><Phone size={18} /><span className="ltr-num">{r.phone}</span></a>
       </div>
 
+      <div className="mt-4 rounded-xl border border-green-200 bg-green-50/60 p-3">
+        {r.status === 'confirmed' ? (
+          waNum ? (
+            <a href={`https://wa.me/${waNum}?text=${encodeURIComponent(confirmationText(r))}`} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 min-h-[48px] px-4 rounded-xl bg-green-700 text-white font-black">
+              <MessageCircle size={18} /> שליחת אישור בוואטסאפ
+            </a>
+          ) : <p className="text-sm text-gray-700">מספר הטלפון לא בפורמט ישראלי – אי אפשר לפתוח וואטסאפ אוטומטית.</p>
+        ) : (
+          <p className="text-sm text-gray-700"><b>שליחת אישור בוואטסאפ</b> תופיע כאן אחרי סימון הבקשה כ״אושרה״.</p>
+        )}
+        <p className="mt-2 text-xs text-gray-600">
+          הכפתור רק פותח את וואטסאפ עם הודעה מוכנה {r.lang !== 'he' && <>(בשפת הלקוח)</>} – ההודעה נשלחת רק אם לוחצים ״שליחה״ בוואטסאפ, והמערכת לא מסמנת שהיא נשלחה.
+        </p>
+        {r.trackToken ? (
+          <button type="button" onClick={async () => { try { await navigator.clipboard.writeText(trackUrl(r.trackToken!, r.lang)); setCopied(true); setTimeout(() => setCopied(false), 3000); } catch { setErr('לא ניתן להעתיק את הקישור בדפדפן הזה.'); } }}
+            className="mt-2 inline-flex items-center gap-1.5 text-sm font-bold text-gray-800 underline">
+            <Copy size={14} /> {copied ? 'הקישור הועתק' : 'העתקת קישור המעקב של הלקוח'}
+          </button>
+        ) : <p className="mt-2 text-xs text-gray-500">לבקשה זו אין קישור מעקב (נשלחה לפני שנוסף המעקב).</p>}
+      </div>
+
       {err && <p className="mt-3 text-sm text-red-700" role="alert">{err}</p>}
       <fieldset className="mt-4" disabled={busy}>
         <legend className="text-xs font-bold text-gray-500 mb-2">עדכון סטטוס</legend>
+        <p className="mb-2 text-xs text-gray-700 flex gap-1.5 items-start"><Info size={14} className="shrink-0 mt-0.5" />
+          <span>שינוי סטטוס מעדכן את דף המעקב של הלקוח, אבל <b>לא שולח לו הודעה</b>. כדי שהלקוח ידע – שלחו לו בעצמכם.</span></p>
         <div className="flex flex-wrap gap-2">
           {STATUSES.map((s) => (
             <button key={s} type="button" onClick={() => choose(s)} aria-pressed={r.status === s}
@@ -294,7 +335,7 @@ const AdminApp: React.FC = () => {
             <ul className="mt-4 grid gap-4">
               {shown.map((r) => (
                 <RequestCard key={r.id} r={r} dup={dupIds.has(r.id)}
-                  onStatus={async (s) => { const store = await getRequestStore(); await store.updateStatus(r.id, s, who); }} />
+                  onStatus={async (s) => { const store = await getRequestStore(); await store.updateStatus(r, s, who); }} />
               ))}
             </ul>
           )}

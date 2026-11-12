@@ -5,8 +5,8 @@
 // A Firebase web config is an identifier, not a secret: security comes from
 // firestore.rules on the server, not from hiding these values.
 import { initializeApp, type FirebaseApp } from 'firebase/app';
-import { getFirestore, type Firestore } from 'firebase/firestore';
-import { getAuth, type Auth } from 'firebase/auth';
+import { getFirestore, connectFirestoreEmulator, type Firestore } from 'firebase/firestore';
+import { getAuth, connectAuthEmulator, type Auth } from 'firebase/auth';
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 
 const env = import.meta.env;
@@ -26,6 +26,12 @@ function getApp(): FirebaseApp {
     throw new Error('firebase-not-configured');
   }
   app = initializeApp(firebaseConfig);
+  // Automated tests only (CI build flag): talk to the local emulators, never a real project.
+  if (env.VITE_FIREBASE_EMULATOR === '1') {
+    connectFirestoreEmulator(getFirestore(app), '127.0.0.1', 8080);
+    connectAuthEmulator(getAuth(app), 'http://127.0.0.1:9099', { disableWarnings: true });
+    return app;
+  }
   // Optional extra flood protection. Turned on only when a site key is configured
   // (see FIREBASE_SETUP.md – enable only after confirming it needs no billing account).
   const siteKey = env.VITE_APPCHECK_RECAPTCHA_V3_SITE_KEY as string | undefined;

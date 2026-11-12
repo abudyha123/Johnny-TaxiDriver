@@ -369,5 +369,40 @@
     ],
     "fallbackNote": "The scroll-controlled videos can’t run on this device, so you can watch each clip with its play button.",
     "play": "Play video"
+  },
+  "track": {
+    "title": "Track your ride request",
+    "loading": "Loading request status…",
+    "statusLabel": "Request status",
+    "code": "Request number",
+    "updated": "Last update",
+    "status": {
+      "new": "Awaiting confirmation",
+      "in_progress": "In progress – not yet confirmed",
+      "confirmed": "Ride confirmed",
+      "cancelled": "Request cancelled",
+      "completed": "Ride completed"
+    },
+    "hint": {
+      "new": "Your request was saved, but the ride is not confirmed yet. Johnny will check and confirm it with you.",
+      "in_progress": "Johnny is handling your request. The ride is not confirmed yet.",
+      "confirmed": "Johnny has confirmed your ride at the requested time.",
+      "cancelled": "This request was cancelled. For questions, call or message Johnny.",
+      "completed": "The ride is complete. Thank you for riding with Johnny Taxi."
+    },
+    "live": "Updates automatically · verified with the server at {{time}}",
+    "stale": "No connection right now. This is the last verified status ({{time}}) – it may have changed since.",
+    "offline": "No connection, so the request status can’t be shown right now. Try again when you’re back online.",
+    "notFoundTitle": "This link isn’t valid",
+    "notFoundDesc": "The link may be wrong or expired. For questions about your request, call or message Johnny.",
+    "open": "Track the request",
+    "copy": "Copy personal link",
+    "copied": "Link copied",
+    "copyFailed": "Couldn’t copy. Select the link above and copy it manually.",
+    "linkNote": "Keep this link to check the status from any device. Whoever has it sees only the request number and status – don’t share it.",
+    "validUntil": "This link is valid until {{date}}.",
+    "call": "Call Johnny",
+    "whatsapp": "WhatsApp Johnny",
+    "demoNote": "Demo mode: data is kept in this browser only."
   }
 }

@@ -1,8 +1,9 @@
 import type { RequestStore } from './store';
-import { NewRideRequest, RideRequest, RequestStatus, shortCode } from './types';
+import { NewRideRequest, RideRequest, RequestStatus, TrackingInfo, shortCode, newTrackToken, trackExpiry } from './types';
 
 // DEMO ONLY: fictitious data kept in this browser's localStorage. Not shared, not secure.
 const KEY = 'jt_demo_requests_v1';
+const TKEY = 'jt_demo_tracking_v1'; // token → minimal tracking info (mirrors the real split)
 
 function iso(daysFromNow: number, hh: number, mm = 0) {
   const d = new Date(); d.setDate(d.getDate() + daysFromNow); d.setHours(hh, mm, 0, 0); return d;
@@ -29,9 +30,21 @@ function seed(): RideRequest[] {
     return {
       id, code: shortCode(id), createdAt: created.toISOString(), name, phone, from, to,
       date: ymd(ride), time: hm(ride), passengers, wheelchair: wc > 0, wheelchairCount: wc,
-      notes, lang: 'he', status, history, demo: true,
+      notes, lang: 'he', status, history, demo: true, trackToken: `demo-track-${i + 1}-` + 'x'.repeat(30),
     };
   });
+}
+
+type TrackMap = Record<string, TrackingInfo>;
+function loadTracks(): TrackMap {
+  try { return JSON.parse(localStorage.getItem(TKEY) || '{}') as TrackMap; } catch { return {}; }
+}
+function saveTracks(m: TrackMap) {
+  try { localStorage.setItem(TKEY, JSON.stringify(m)); } catch { /* ignore */ }
+}
+function trackFor(r: RideRequest): TrackingInfo {
+  const last = r.history[r.history.length - 1];
+  return { code: r.code, status: r.status, updatedAt: last?.at || r.createdAt, expiresAt: trackExpiry(r.date, r.time).toISOString() };
 }
 
 function load(): RideRequest[] {
@@ -39,7 +52,9 @@ function load(): RideRequest[] {
     const raw = localStorage.getItem(KEY);
     if (raw) return JSON.parse(raw) as RideRequest[];
   } catch { /* storage unavailable */ }
-  const s = seed(); save(s); return s;
+  const s = seed();
+  const m = loadTracks(); s.forEach((r) => { if (r.trackToken) m[r.trackToken] = trackFor(r); }); saveTracks(m);
+  save(s); return s;
 }
 const CHANGED = 'jt-demo-changed';
 function save(list: RideRequest[]) {
@@ -53,11 +68,13 @@ export const demoStore: RequestStore = {
     await new Promise((r) => setTimeout(r, 250)); // feels like a network call
     const list = load();
     const existing = list.find((r) => r.id === req.id);
-    if (existing) return { created: false, request: existing }; // same submission again → no duplicate
+    if (existing) return { created: false, request: existing, trackToken: existing.trackToken || '' }; // no duplicate
     const now = new Date().toISOString();
-    const request: RideRequest = { ...req, createdAt: now, status: 'new', history: [{ status: 'new', at: now, by: 'website' }], demo: true };
+    const trackToken = newTrackToken();
+    const request: RideRequest = { ...req, createdAt: now, status: 'new', history: [{ status: 'new', at: now, by: 'website' }], demo: true, trackToken };
+    const m = loadTracks(); m[trackToken] = trackFor(request); saveTracks(m);
     save([request, ...list]);
-    return { created: true, request };
+    return { created: true, request, trackToken };
   },
   subscribe(onData) {
     const push = () => onData(load().sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
@@ -68,15 +85,31 @@ export const demoStore: RequestStore = {
     push();
     return () => { window.removeEventListener(CHANGED, push); window.removeEventListener('storage', onStorage); };
   },
-  async updateStatus(id: string, status: RequestStatus, by: string) {
+  async updateStatus(r0: RideRequest, status: RequestStatus, by: string) {
     const list = load();
-    const i = list.findIndex((r) => r.id === id);
+    const i = list.findIndex((r) => r.id === r0.id);
     if (i < 0) throw new Error('not found');
     const r = list[i];
     if (r.status === status) return;
-    list[i] = { ...r, status, history: [...r.history, { status, at: new Date().toISOString(), by }] };
+    const next = { ...r, status, history: [...r.history, { status, at: new Date().toISOString(), by }] };
+    list[i] = next;
+    if (next.trackToken) { const m = loadTracks(); m[next.trackToken] = trackFor(next); saveTracks(m); }
     save(list);
+  },
+
+  watchTracking(token, cb) {
+    const push = () => {
+      const info = loadTracks()[token];
+      if (!info || new Date(info.expiresAt).getTime() < Date.now()) cb({ kind: 'notFound' });
+      else cb({ kind: 'live', info, verifiedAt: new Date().toISOString() });
+    };
+    const onStorage = (e: StorageEvent) => { if (e.key === TKEY || e.key === KEY) push(); };
+    window.addEventListener(CHANGED, push);
+    window.addEventListener('storage', onStorage);
+    cb({ kind: 'loading' });
+    const t = setTimeout(push, 200);
+    return () => { clearTimeout(t); window.removeEventListener(CHANGED, push); window.removeEventListener('storage', onStorage); };
   },
 };
 
-export function resetDemoData() { save(seed()); }
+export function resetDemoData() { localStorage.removeItem(TKEY); localStorage.removeItem(KEY); load(); }

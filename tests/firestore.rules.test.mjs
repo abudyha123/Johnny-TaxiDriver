@@ -3,6 +3,7 @@
 // (needs Java 21+; the Firebase CLI downloads the emulator on first run)
 import { test, before, after, beforeEach } from 'node:test';
 import { readFileSync } from 'node:fs';
+import assert from 'node:assert/strict';
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
 import {
   doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, writeBatch,
@@ -42,11 +43,22 @@ function base(id, over = {}) {
     passengers: 2, wheelchair: true, wheelchairCount: 1, lang: 'he', status: 'new', history: [], ...over,
   };
 }
+const newToken = () => {
+  const b = new Uint8Array(32); crypto.getRandomValues(b);
+  return Buffer.from(b).toString('base64url'); // 43 chars, like the site
+};
+const inDays = (d) => Timestamp.fromMillis(Date.now() + d * 86400000);
+function trackDoc(id, over = {}) {
+  return { v: 1, rid: id, code: 'JT-ABCDE', status: 'new', createdAt: serverTimestamp(), updatedAt: serverTimestamp(), expiresAt: inDays(14), ...over };
+}
+
 // The exact batch the website sends (src/lib/requests/firestoreStore.ts)
-function publicCreate(fs, id, over = {}, { day = DAY, counters = true } = {}) {
+function publicCreate(fs, id, over = {}, { day = DAY, counters = true, token = null, track = {}, trackId = null } = {}) {
   const data = { ...base(id, over), createdAt: serverTimestamp() };
+  if (token) data.trackToken = token;
   const b = writeBatch(fs);
   b.set(doc(fs, 'requests', id), data);
+  if (token && track !== false) b.set(doc(fs, 'tracking', trackId || token), trackDoc(id, track));
   if (counters) {
     b.set(doc(fs, 'dailyCount', String(day)), { n: increment(1), lastId: id }, { merge: true });
     b.set(doc(fs, 'phoneDaily', `${day}_${data.phoneKey}`), { n: increment(1), lastId: id }, { merge: true });
@@ -179,4 +191,82 @@ test('admins list is private; each user may only check their own entry', async (
 test('unknown collections are closed', async () => {
   await assertFails(setDoc(doc(visitor(), 'anything/x'), { a: 1 }));
   await assertFails(getDoc(doc(admin(), 'anything/x')));
+});
+
+// ---------- customer tracking ----------
+async function createTracked(over = {}) {
+  const id = newId(), token = newToken();
+  await assertSucceeds(publicCreate(visitor(), id, over, { token }));
+  return { id, token };
+}
+test('tracking: request + tracking document are created together', async () => {
+  await createTracked();
+});
+test('tracking: request that names a token but has no tracking doc is refused', async () => {
+  await assertFails(publicCreate(visitor(), newId(), {}, { token: newToken(), track: false }));
+});
+test('tracking: tracking doc alone (no new request) is refused', async () => {
+  const t = newToken();
+  await assertFails(setDoc(doc(visitor(), 'tracking', t), trackDoc('existing-0001')));
+  await assertFails(setDoc(doc(visitor(), 'tracking', t), trackDoc('nonexistent-0001')));
+});
+for (const [label, opts] of [
+  ['status confirmed at creation', { track: { status: 'confirmed' } }],
+  ['extra field (name)', { track: { name: 'לקוח' } }],
+  ['expiry too long', { track: { expiresAt: inDays(200) } }],
+  ['expiry already past', { track: { expiresAt: inDays(-1) } }],
+  ['different code than the request', { track: { code: 'JT-ZZZZZ' } }],
+  ['token too short', { token: 'abc123' }],
+  ['token of the tracking doc differs from the request', { trackId: newToken() }],
+]) {
+  test(`tracking create refused: ${label}`, async () => {
+    await assertFails(publicCreate(visitor(), newId(), {}, { token: opts.token || newToken(), ...opts }));
+  });
+}
+test('tracking: anyone with the link can read it; it holds only minimal fields', async () => {
+  const { token } = await createTracked();
+  const snap = await assertSucceeds(getDoc(doc(visitor(), 'tracking', token)));
+  assert.deepEqual(Object.keys(snap.data()).sort(), ['code', 'createdAt', 'expiresAt', 'rid', 'status', 'updatedAt', 'v']);
+});
+test('tracking: wrong token, listing and expired links are refused', async () => {
+  await createTracked();
+  await assertFails(getDoc(doc(visitor(), 'tracking', newToken())));
+  await assertFails(getDocs(collection(visitor(), 'tracking')));
+  await assertFails(getDocs(collection(stranger(), 'tracking')));
+  const old = newToken();
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'tracking', old), { v: 1, rid: 'existing-0001', code: 'JT-ABCDE', status: 'confirmed', createdAt: inDays(-30), updatedAt: inDays(-29), expiresAt: inDays(-1) });
+  });
+  await assertFails(getDoc(doc(visitor(), 'tracking', old)));
+});
+test('tracking: the link does not open the private request', async () => {
+  const { id } = await createTracked();
+  await assertFails(getDoc(doc(visitor(), 'requests', id)));
+});
+test('tracking: customer / stranger cannot fake a confirmation', async () => {
+  const { token } = await createTracked();
+  for (const fs of [visitor(), stranger()]) {
+    await assertFails(updateDoc(doc(fs, 'tracking', token), { status: 'confirmed', updatedAt: serverTimestamp() }));
+    await assertFails(setDoc(doc(fs, 'tracking', token), trackDoc('x', { status: 'confirmed' })));
+    await assertFails(deleteDoc(doc(fs, 'tracking', token)));
+  }
+});
+const adminBatch = (id, token, status, { trackStatus = status, skipTrack = false, skipRequest = false } = {}) => {
+  const fs = admin(); const b = writeBatch(fs);
+  if (!skipRequest) b.update(doc(fs, 'requests', id), statusUpdate(status, 'johnny@example.com'));
+  if (!skipTrack) b.update(doc(fs, 'tracking', token), { status: trackStatus, updatedAt: serverTimestamp() });
+  return b.commit();
+};
+test('tracking: admin changes request + tracking together, customer sees it', async () => {
+  const { id, token } = await createTracked();
+  await assertSucceeds(adminBatch(id, token, 'confirmed'));
+  const snap = await getDoc(doc(visitor(), 'tracking', token));
+  assert.equal(snap.data().status, 'confirmed');
+});
+test('tracking: admin cannot let the two disagree or change one alone', async () => {
+  const { id, token } = await createTracked();
+  await assertFails(adminBatch(id, token, 'confirmed', { trackStatus: 'cancelled' }));
+  await assertFails(adminBatch(id, token, 'confirmed', { skipTrack: true }));
+  await assertFails(adminBatch(id, token, 'confirmed', { skipRequest: true }));
+  await assertFails(updateDoc(doc(admin(), 'tracking', token), { expiresAt: inDays(100) }));
 });

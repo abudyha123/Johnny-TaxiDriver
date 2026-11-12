@@ -1,9 +1,9 @@
-name: Firestore rules tests
-# Runs the security-rules tests on GitHub's servers against the local emulator only
-# (project id "demo-…" – no real Firebase project or customer data is touched).
+name: Firestore rules + tracking e2e
+# Runs on GitHub's servers against local Firebase emulators only (project ids "demo-…"):
+# no real Firebase project and no customer data are touched.
 on:
   push:
-    paths: ['firestore.rules', 'tests/**', 'firebase.json', '.github/workflows/firestore-rules.yml']
+    branches: [feature/firebase-requests]
   workflow_dispatch:
 permissions:
   contents: read
@@ -19,3 +19,18 @@ jobs:
         with: { node-version: '22', cache: npm }
       - run: npm ci
       - run: npm run test:rules
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21' }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm }
+      - run: npm ci
+      - run: npm i --no-save playwright@1 && npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: e2e-screenshots, path: '*.png', if-no-files-found: ignore }

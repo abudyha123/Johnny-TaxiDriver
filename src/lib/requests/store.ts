@@ -1,4 +1,4 @@
-import { NewRideRequest, RequestStatus, RideRequest } from './types';
+import { NewRideRequest, RequestStatus, RideRequest, TrackingState } from './types';
 import { demoStore } from './demoStore';
 
 /**
@@ -16,10 +16,13 @@ import { demoStore } from './demoStore';
 export interface RequestStore {
   readonly mode: 'demo' | 'firebase';
   /** Resolves only after the server confirmed the save. Idempotent per request id. */
-  create(req: NewRideRequest): Promise<{ created: boolean; request: RideRequest }>;
+  create(req: NewRideRequest): Promise<{ created: boolean; request: RideRequest; trackToken: string }>;
   /** Live list for the admin screen. Returns an unsubscribe function. */
   subscribe(onData: (list: RideRequest[]) => void, onError: (e: Error) => void): () => void;
-  updateStatus(id: string, status: RequestStatus, by: string): Promise<void>;
+  /** Request + its public tracking status are changed together (one atomic write). */
+  updateStatus(r: RideRequest, status: RequestStatus, by: string): Promise<void>;
+  /** Live tracking status for the customer's link. Returns an unsubscribe function. */
+  watchTracking(token: string, cb: (s: TrackingState) => void): () => void;
 }
 
 const env = import.meta.env;
