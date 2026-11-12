@@ -359,6 +359,8 @@
         "text": "Rides in Haifa and the North, and trips to Ben Gurion Airport and anywhere in Israel.",
         "alt": "The taxi continuing its drive, side view"
       }
-    ]
+    ],
+    "fallbackNote": "The scroll-controlled videos can’t run on this device, so you can watch each clip with its play button.",
+    "play": "Play video"
   }
 }

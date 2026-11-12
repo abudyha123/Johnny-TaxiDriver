@@ -61,6 +61,9 @@ const Journey: React.FC = () => {
   const [active, setActive] = useState(0);
   const [ready, setReady] = useState<boolean[]>([false, false, false, false]);
   const [load, setLoad] = useState(false);
+  const [srcs, setSrcs] = useState<(string | undefined)[]>([undefined, undefined, undefined, undefined]);
+  const [failed, setFailed] = useState(false);
+  const readyRef = useRef<boolean[]>([false, false, false, false]);
   const small = useMemo(() => {
     if (typeof window === 'undefined') return false;
     const conn = (navigator as unknown as { connection?: { saveData?: boolean } }).connection;
@@ -76,9 +79,59 @@ const Journey: React.FC = () => {
     return () => io.disconnect();
   }, [reduced]);
 
+
+  // Load clips ourselves instead of relying on `preload` (many phone browsers fetch no video data
+  // before a user gesture, which left the scene waiting forever). On phones each clip is downloaded
+  // completely as a Blob, so seeking during scroll is local and works in every browser.
+  useEffect(() => {
+    if (!load || reduced || failed) return;
+    let cancelled = false;
+    const made: string[] = [];
+    (async () => {
+      for (let k = 0; k < CLIPS.length; k++) {
+        const url = srcFor(CLIPS[k].id, small, 'mp4');
+        let src = url;
+        if (small && !url.startsWith('blob:')) {
+          try {
+            const res = await fetch(url, { cache: 'force-cache' });
+            if (!res.ok) throw new Error(String(res.status));
+            src = URL.createObjectURL(await res.blob());
+            made.push(src);
+          } catch {
+            if (!cancelled) setFailed(true);
+            return;
+          }
+        }
+        if (cancelled) return;
+        setSrcs((s) => s.map((v, i) => (i === k ? src : v)));
+      }
+    })();
+    return () => { cancelled = true; made.forEach((u) => URL.revokeObjectURL(u)); };
+  }, [load, reduced, failed, small]);
+
+  // attach each source explicitly and start decoding
+  useEffect(() => {
+    srcs.forEach((src, k) => {
+      const v = videoRefs.current[k];
+      if (!v || !src || v.dataset.src === src) return;
+      v.dataset.src = src;
+      v.muted = true; v.defaultMuted = true;
+      v.setAttribute('muted', ''); v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', '');
+      v.src = src;
+      v.load();
+    });
+  }, [srcs]);
+
+  // safety net: if the clip on screen still can't show a frame, switch to tap-to-play instead of spinning
+  useEffect(() => {
+    if (!load || reduced || failed) return;
+    const id = window.setTimeout(() => { if (!readyRef.current[active]) setFailed(true); }, 15000);
+    return () => window.clearTimeout(id);
+  }, [load, reduced, failed, active, srcs]);
+
   // scroll → film
   useEffect(() => {
-    if (reduced) return;
+    if (reduced || failed) return;
     let raf = 0, shown = 0, target = 0, last = -1;
     const read = () => {
       const el = sectionRef.current; if (!el) return;
@@ -134,26 +187,41 @@ const Journey: React.FC = () => {
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll);
     return () => { window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onScroll); cancelAnimationFrame(raf); };
-  }, [reduced, rtl]);
+  }, [reduced, rtl, failed]);
 
-  const onReady = (k: number) => () => {
-    setReady((r) => (r[k] ? r : r.map((v, i) => (i === k ? true : v))));
+  const markReady = (k: number) => () => {
     const v = videoRefs.current[k];
-    // iOS only paints seeked frames after the element has played once
-    if (v && v.dataset.primed !== '1') { v.dataset.primed = '1'; v.play().then(() => v.pause()).catch(() => undefined); }
+    if (!v || v.readyState < 2 || readyRef.current[k]) return;
+    readyRef.current[k] = true;
+    setReady((r) => r.map((x, i) => (i === k ? true : x)));
+  };
+  // some browsers only decode/paint a seeked frame after the element has played once (muted, inline)
+  const prime = (k: number) => () => {
+    const v = videoRefs.current[k];
+    if (!v || v.dataset.primed === '1') return;
+    v.dataset.primed = '1';
+    const p = v.play();
+    if (p && typeof p.then === 'function') p.then(() => v.pause()).catch(() => undefined);
+    else v.pause();
   };
 
   const ch = chapters[active] || chapters[0];
 
-  if (reduced) {
+  if (reduced || failed) {
     return (
-      <section id="journey" aria-label={t('journey.sectionLabel')} className="bg-[#0b0f14] text-white py-16 md:py-24">
+      <section id="journey" aria-label={t('journey.sectionLabel')} className="bg-[#0b0f14] text-white py-16 md:py-24" data-fallback={failed ? '' : undefined}>
         <div className="container mx-auto px-4 md:px-6">
-          <h2 className="font-display text-4xl md:text-5xl font-black mb-10">{t('journey.heading')}</h2>
-          <ol className="grid gap-8 md:grid-cols-2">
+          <h2 className="font-display text-4xl md:text-5xl font-black mb-3">{t('journey.heading')}</h2>
+          {failed && <p className="text-slate-300 mb-8">{t('journey.fallbackNote')}</p>}
+          <ol className={`grid gap-8 md:grid-cols-2 ${failed ? '' : 'mt-7'}`}>
             {CLIPS.map((clip, k) => (
               <li key={clip.id} className="rounded-2xl overflow-hidden bg-white/5 border border-white/10">
-                <img src={srcFor(clip.id, small, 'poster')} alt={chapters[k]?.alt} className="w-full aspect-video object-cover" loading="lazy" />
+                {failed && !reduced ? (
+                  <video className="w-full aspect-video object-cover bg-black" controls playsInline muted preload="none"
+                    poster={srcFor(clip.id, small, 'poster')} src={srcFor(clip.id, small, 'mp4')} aria-label={`${t('journey.play')}: ${chapters[k]?.title}`} />
+                ) : (
+                  <img src={srcFor(clip.id, small, 'poster')} alt={chapters[k]?.alt} className="w-full aspect-video object-cover" loading="lazy" />
+                )}
                 <div className="p-6">
                   <p className="text-yellow-400 font-display font-bold">{String(k + 1).padStart(2, '0')} · {chapters[k]?.kicker}</p>
                   <h3 className="font-display text-2xl font-bold mt-1">{chapters[k]?.title}</h3>
@@ -162,6 +230,7 @@ const Journey: React.FC = () => {
               </li>
             ))}
           </ol>
+          <a href="#booking" className="btn-yellow mt-10">{t('journey.cta')}</a>
         </div>
       </section>
     );
@@ -179,9 +248,9 @@ const Journey: React.FC = () => {
                 <video
                   ref={(el) => (videoRefs.current[k] = el)}
                   className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${ready[k] ? 'opacity-100' : 'opacity-0'}`}
-                  src={load ? srcFor(clip.id, small, 'mp4') : undefined}
                   muted playsInline preload={load ? 'auto' : 'none'} disablePictureInPicture tabIndex={-1} aria-hidden="true"
-                  onLoadedData={onReady(k)}
+                  onLoadedMetadata={prime(k)} onLoadedData={markReady(k)} onCanPlay={markReady(k)} onSeeked={markReady(k)}
+                  onError={() => setFailed(true)}
                 />
               </div>
             ))}
