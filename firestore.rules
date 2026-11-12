@@ -45,7 +45,7 @@ service cloud.firestore {
     }
 
     // UTC day number; the client sends the same key (see firestoreStore.ts).
-    function todayKey() { return string(math.floor(request.time.toMillis() / 86400000)); }
+    function todayKey() { return string(int(math.floor(request.time.toMillis() / 86400000))); }
 
     // Business-scale caps (per UTC day). They bound how many requests – and therefore
     // writes – the public can create; they do NOT make it impossible to exhaust the
@@ -70,7 +70,8 @@ service cloud.firestore {
         && request.resource.data.status in ['new', 'in_progress', 'confirmed', 'cancelled', 'completed']
         && request.resource.data.history is list
         && request.resource.data.history.size() == resource.data.history.size() + 1
-        && request.resource.data.history[0:resource.data.history.size()] == resource.data.history
+        && (resource.data.history.size() == 0
+            || request.resource.data.history[0:resource.data.history.size()] == resource.data.history)
         && validHistoryEntry(request.resource.data.history[resource.data.history.size()], request.resource.data.status)
         && request.resource.data.updatedAt == request.time
         && request.resource.data.updatedBy == request.auth.token.email;
