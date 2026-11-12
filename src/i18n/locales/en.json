@@ -15,12 +15,13 @@
     "subtitle": "Regular and wheelchair-accessible taxi services available 24/7 throughout Haifa and surrounding areas.",
     "bookRide": "Book Your Ride",
     "callNow": "Call Now",
-    "approved": "Israeli Ministry of Transportation Approved",
+    "approved": "Officially licensed by the Israeli Ministry of Transport",
     "badge": "Accessible Transportation in Haifa & the North",
     "headline1": "Mobility For Everyone,",
     "headline2": "Everywhere",
     "description": "Professional wheelchair-accessible taxi service serving Haifa, the entire North region, and transfers to and from Ben Gurion Airport. Available 24/7 for both scheduled appointments and emergency transportation.",
-    "whatsappCta": "Chat with us on WhatsApp"
+    "whatsappCta": "Chat with us on WhatsApp",
+    "imageAlt": "The white Johnny Taxi Citroën Berlingo with a yellow taxi sign on the roof, parked at the kerb below a cliff and greenery"
   },
   "features": {
     "sectionTitle": "Our Specialized Services",
@@ -47,8 +48,8 @@
         "description": "Priority dispatch for urgent medical appointments or emergencies."
       },
       {
-        "title": "Licensed & Insured",
-        "description": "Professionally licensed and fully insured for your peace of mind."
+        "title": "Officially Licensed",
+        "description": "Officially licensed by the Israeli Ministry of Transport."
       }
     ],
     "vehicleTitle": "Our Vehicle",
@@ -175,7 +176,8 @@
           "Day trips around the Galilee"
         ]
       }
-    ]
+    ],
+    "photoAlt": "The taxi from behind: the rear window reads \"Taxis to Ben Gurion Airport and all parts of the country\", with Haifa road signs in the background"
   },
   "testimonialsSection": {
     "sectionTitle": "What Our Clients Say",
@@ -243,12 +245,15 @@
       "passengers": "Number of Passengers",
       "wheelchairs": "Wheelchairs",
       "notes": "Additional Notes",
-      "notesPlaceholder": "Any special requirements or information"
+      "notesPlaceholder": "Any special requirements or information",
+      "wheelchairAccess": "Do you need wheelchair access?",
+      "yes": "Yes",
+      "no": "No"
     },
-    "submit": "Book Your Ride",
+    "submit": "Send request via WhatsApp",
     "submitting": "Opening WhatsApp...",
-    "successTitle": "Almost Done!",
-    "successDesc": "We've opened WhatsApp with your booking details filled in. Please tap Send there to deliver your request to us.",
+    "successTitle": "One more step",
+    "successDesc": "We opened WhatsApp with your request details. Tap \"Send\" in WhatsApp to deliver it to Johnny.",
     "bookAnother": "Book Another Ride",
     "errors": {
       "name": "Name is required",
@@ -258,21 +263,25 @@
       "pickup": "Pickup address is required",
       "destination": "Destination is required",
       "date": "Date is required",
-      "time": "Time is required"
+      "time": "Time is required",
+      "wheelchairAccess": "Please tell us whether wheelchair access is needed"
     },
     "whatsappTitle": "New Booking Request",
     "whatsappLabels": {
       "name": "Name",
       "phone": "Phone",
       "email": "Email",
-      "pickup": "Pickup",
+      "pickup": "From",
       "destination": "Destination",
       "date": "Date",
       "time": "Time",
       "passengers": "Passengers",
       "wheelchairs": "Wheelchairs",
-      "notes": "Notes"
-    }
+      "notes": "Notes",
+      "wheelchairAccess": "Wheelchair access"
+    },
+    "disclaimer": "Sending this request is not a booking confirmation. Your ride will be confirmed with Johnny.",
+    "openWhatsapp": "Open WhatsApp"
   },
   "services": {
     "title": "Our Services",
@@ -294,9 +303,9 @@
     "chatWithUs": "Chat with us"
   },
   "footer": {
-    "brand": "AccessiTaxi",
+    "brand": "Johnny Taxi",
     "tagline": "Professional accessible taxi service providing reliable and comfortable transportation across Haifa and the North.",
-    "license": "Israeli Ministry of Transportation License #12345",
+    "license": "Officially licensed by the Israeli Ministry of Transport",
     "quickLinks": "Quick Links",
     "contactTitle": "Contact",
     "subscribeTitle": "Subscribe for Updates",
@@ -314,5 +323,42 @@
     "en": "English",
     "he": "עברית",
     "ar": "العربية"
+  },
+  "brand": {
+    "name": "Johnny Taxi"
+  },
+  "journey": {
+    "sectionLabel": "On our way to you – the ride",
+    "heading": "On our way to you",
+    "skip": "Skip this scene",
+    "loading": "Loading video…",
+    "progress": "Scene progress",
+    "cta": "Book a Ride",
+    "chapters": [
+      {
+        "kicker": "On the road",
+        "title": "On our way to you",
+        "text": "Professional taxi service in Haifa, across the North and to and from Ben Gurion Airport.",
+        "alt": "The Johnny Taxi van driving along a coastal mountain road"
+      },
+      {
+        "kicker": "Arriving",
+        "title": "We come to you",
+        "text": "A wheelchair-accessible taxi, available 24/7 for both planned trips and emergencies.",
+        "alt": "The taxi parked at the roadside in Haifa, with an accessibility sign on the rear door"
+      },
+      {
+        "kicker": "Accessibility",
+        "title": "Manual wheelchair ramp",
+        "text": "A manual ramp for safe, comfortable boarding, and a secure wheelchair locking system.",
+        "alt": "The rear door open with the manual ramp deployed onto the sidewalk"
+      },
+      {
+        "kicker": "Onward",
+        "title": "And we’re off",
+        "text": "Rides in Haifa and the North, and trips to Ben Gurion Airport and anywhere in Israel.",
+        "alt": "The taxi continuing its drive, side view"
+      }
+    ]
   }
 }

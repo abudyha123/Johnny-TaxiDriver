@@ -34,9 +34,6 @@ const Footer: React.FC = () => {
                   <a href="#areas" className="text-gray-400 hover:text-white transition-colors">{t('header.areas')}</a>
                 </li>
                 <li>
-                  <a href="#testimonials" className="text-gray-400 hover:text-white transition-colors">{t('header.testimonials')}</a>
-                </li>
-                <li>
                   <a href="#booking" className="text-gray-400 hover:text-white transition-colors">{t('header.bookARide')}</a>
                 </li>
                 <li>

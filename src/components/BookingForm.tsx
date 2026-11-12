@@ -19,6 +19,7 @@ const BookingForm: React.FC = () => {
     date: '',
     time: '',
     passengers: 1,
+    wheelchairAccess: '',
     wheelchairCount: 1,
     notes: ''
   });
@@ -26,6 +27,7 @@ const BookingForm: React.FC = () => {
   const [errors, setErrors] = useState<Partial<Record<keyof BookingFormData, string>>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [lastUrl, setLastUrl] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -76,33 +78,35 @@ const BookingForm: React.FC = () => {
       newErrors.time = t('booking.errors.time');
     }
 
+    if (!formData.wheelchairAccess) {
+      newErrors.wheelchairAccess = t('booking.errors.wheelchairAccess');
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  // Ordered, readable request for Johnny. It is a request only – the ride is confirmed with Johnny.
   const buildWhatsAppMessage = (): string => {
+    const L = (k: string) => t(`booking.whatsappLabels.${k}`);
+    const access = formData.wheelchairAccess === 'yes'
+      ? `${t('booking.fields.yes')} (${L('wheelchairs')}: ${formData.wheelchairCount})`
+      : t('booking.fields.no');
     const lines = [
       t('booking.whatsappTitle'),
       '',
-      `${t('booking.whatsappLabels.name')}: ${formData.name}`,
-      `${t('booking.whatsappLabels.phone')}: ${formData.phone}`
+      `${L('name')}: ${formData.name.trim()}`,
+      `${L('phone')}: ${formData.phone.trim()}`,
+      `${L('pickup')}: ${formData.pickupAddress.trim()}`,
+      `${L('destination')}: ${formData.destination.trim()}`,
+      `${L('date')}: ${formData.date}`,
+      `${L('time')}: ${formData.time}`,
+      `${L('passengers')}: ${formData.passengers}`,
+      `${L('wheelchairAccess')}: ${access}`,
     ];
-
-    if (formData.email.trim()) {
-      lines.push(`${t('booking.whatsappLabels.email')}: ${formData.email}`);
-    }
-
-    lines.push(`${t('booking.whatsappLabels.pickup')}: ${formData.pickupAddress}`);
-    lines.push(`${t('booking.whatsappLabels.destination')}: ${formData.destination}`);
-    lines.push(`${t('booking.whatsappLabels.date')}: ${formData.date}`);
-    lines.push(`${t('booking.whatsappLabels.time')}: ${formData.time}`);
-    lines.push(`${t('booking.whatsappLabels.passengers')}: ${formData.passengers}`);
-    lines.push(`${t('booking.whatsappLabels.wheelchairs')}: ${formData.wheelchairCount}`);
-
-    if (formData.notes.trim()) {
-      lines.push(`${t('booking.whatsappLabels.notes')}: ${formData.notes}`);
-    }
-
+    if (formData.email.trim()) lines.push(`${L('email')}: ${formData.email.trim()}`);
+    if (formData.notes.trim()) lines.push(`${L('notes')}: ${formData.notes.trim()}`);
+    lines.push('', t('booking.disclaimer'));
     return lines.join('\n');
   };
 
@@ -111,32 +115,24 @@ const BookingForm: React.FC = () => {
 
     if (validateForm()) {
       setIsSubmitting(true);
-
       const message = buildWhatsAppMessage();
       const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+      setLastUrl(whatsappUrl);
+      // opened inside the click so phones don't block it; a manual link is shown as a fallback
       window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-
       setTimeout(() => {
         setIsSubmitting(false);
         setSubmitSuccess(true);
-
-        setTimeout(() => {
-          setFormData({
-            name: '',
-            phone: '',
-            email: '',
-            pickupAddress: '',
-            destination: '',
-            date: '',
-            time: '',
-            passengers: 1,
-            wheelchairCount: 1,
-            notes: ''
-          });
-          setSubmitSuccess(false);
-        }, 6000);
-      }, 600);
+        // keep the request summary (disclaimer + manual WhatsApp link) on screen
+        requestAnimationFrame(() => document.getElementById('booking-result')?.scrollIntoView({ block: 'center' }));
+      }, 400);
     }
+  };
+
+  const resetForm = () => {
+    setFormData({ name: '', phone: '', email: '', pickupAddress: '', destination: '', date: '', time: '', passengers: 1, wheelchairAccess: '', wheelchairCount: 1, notes: '' });
+    setSubmitSuccess(false);
+    setLastUrl('');
   };
 
   return (
@@ -211,20 +207,28 @@ const BookingForm: React.FC = () => {
 
             <div className="lg:col-span-3 p-8">
               {submitSuccess ? (
-                <div className="h-full flex flex-col items-center justify-center text-center animate-fadeIn">
+                <div id="booking-result" className="h-full flex flex-col items-center justify-center text-center animate-fadeIn" role="status" aria-live="polite">
                   <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
                     <MessageCircle className="h-8 w-8 text-green-600" />
                   </div>
                   <h3 className="text-2xl font-bold text-gray-900 mb-2">{t('booking.successTitle')}</h3>
-                  <p className="text-gray-600 mb-6">
+                  <p className="text-gray-600 mb-3">
                     {t('booking.successDesc')}
                   </p>
-                  <Button
-                    variant="primary"
-                    onClick={() => setSubmitSuccess(false)}
-                  >
-                    {t('booking.bookAnother')}
-                  </Button>
+                  <p className="text-sm font-semibold text-gray-800 bg-yellow-50 border border-yellow-200 rounded-md px-3 py-2 mb-6" role="note">
+                    {t('booking.disclaimer')}
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-3">
+                    {lastUrl && (
+                      <a href={lastUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-5 py-3 rounded-lg font-semibold">
+                        <MessageCircle size={18} aria-hidden="true" />
+                        {t('booking.openWhatsapp')}
+                      </a>
+                    )}
+                    <Button variant="outline" onClick={resetForm}>
+                      {t('booking.bookAnother')}
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit}>
@@ -325,21 +329,29 @@ const BookingForm: React.FC = () => {
                       </select>
                     </div>
 
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        {t('booking.fields.wheelchairs')}
-                      </label>
-                      <select
-                        name="wheelchairCount"
-                        value={formData.wheelchairCount}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
-                      >
-                        {[0, 1, 2, 3].map(num => (
-                          <option key={num} value={num}>{num}</option>
+                    <fieldset className="mb-4 md:col-span-2" aria-describedby={errors.wheelchairAccess ? 'wheelchairAccess-error' : undefined}>
+                      <legend className="block text-sm font-medium text-gray-700 mb-2">
+                        {t('booking.fields.wheelchairAccess')} <span className="text-red-500" aria-hidden="true">*</span>
+                      </legend>
+                      <div className="flex flex-wrap gap-3">
+                        {(['yes', 'no'] as const).map((opt) => (
+                          <label key={opt} className={`flex items-center gap-2 min-h-[48px] px-4 rounded-lg border cursor-pointer ${formData.wheelchairAccess === opt ? 'border-yellow-500 bg-yellow-50' : 'border-gray-300'}`}>
+                            <input type="radio" name="wheelchairAccess" value={opt} checked={formData.wheelchairAccess === opt} onChange={handleChange} required className="accent-yellow-500 w-4 h-4" />
+                            <span className="font-medium text-gray-800">{t(`booking.fields.${opt}`)}</span>
+                          </label>
                         ))}
-                      </select>
-                    </div>
+                        {formData.wheelchairAccess === 'yes' && (
+                          <label className="flex items-center gap-2 min-h-[48px]">
+                            <span className="text-sm text-gray-700">{t('booking.fields.wheelchairs')}</span>
+                            <select name="wheelchairCount" value={formData.wheelchairCount} onChange={handleChange}
+                              className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                              {[1, 2, 3].map((num) => <option key={num} value={num}>{num}</option>)}
+                            </select>
+                          </label>
+                        )}
+                      </div>
+                      {errors.wheelchairAccess && <p id="wheelchairAccess-error" className="mt-1 text-sm text-red-500" role="alert">{errors.wheelchairAccess}</p>}
+                    </fieldset>
 
                     <div className="md:col-span-2 mb-6">
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -367,6 +379,7 @@ const BookingForm: React.FC = () => {
                     <MessageCircle size={20} />
                     {isSubmitting ? t('booking.submitting') : t('booking.submit')}
                   </Button>
+                  <p className="mt-3 text-sm text-gray-700 text-center font-medium" role="note">{t('booking.disclaimer')}</p>
                 </form>
               )}
             </div>

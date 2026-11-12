@@ -1,9 +1,10 @@
 import React, { useEffect } from 'react';
 import Header from './components/Header';
 import Hero from './components/Hero';
+import Journey from './components/Journey';
+import MobileActionBar from './components/MobileActionBar';
 import Features from './components/Features';
 import ServiceAreas from './components/ServiceAreas';
-import Testimonials from './components/Testimonials';
 import BookingForm from './components/BookingForm';
 import EmergencyCallout from './components/EmergencyCallout';
 import Contact from './components/Contact';
@@ -26,18 +27,20 @@ function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-white">
+    <div id="top" className="min-h-screen bg-white">
       <Header />
       <main>
         <Hero />
+        <Journey />
         <Features />
         <ServiceAreas />
         <EmergencyCallout />
-        <Testimonials />
+        {/* Testimonials hidden until real customer reviews are available */}
         <BookingForm />
         <Contact />
       </main>
       <Footer />
+      <MobileActionBar />
     </div>
   );
 }

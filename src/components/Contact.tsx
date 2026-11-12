@@ -30,7 +30,7 @@ const Contact: React.FC = () => {
 
             <div className="space-y-3">
               <a
-                href="tel:0545928999"
+                href="tel:+972545928999"
                 className="block text-lg font-medium text-blue-600 hover:text-blue-800 transition-colors"
               >
                 {t('contact.phone')}

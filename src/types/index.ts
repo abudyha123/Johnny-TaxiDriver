@@ -32,6 +32,7 @@ export type BookingFormData = {
   date: string;
   time: string;
   passengers: number;
+  wheelchairAccess: '' | 'yes' | 'no';
   wheelchairCount: number;
   notes: string;
 };

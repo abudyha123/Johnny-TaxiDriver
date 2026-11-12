@@ -28,12 +28,16 @@ const ServiceAreas: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
         <div>
           <div className="bg-white rounded-xl shadow-md overflow-hidden card-hover">
-            <div className="relative aspect-video">
-              <img
-                src="https://images.pexels.com/photos/13820719/pexels-photo-13820719.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
-                alt="Aerial view of Haifa - Johnny Taxi service area"
-                className="w-full h-full object-cover"
-              />
+            <div className="relative aspect-[4/3]">
+              <picture>
+                <source type="image/webp" srcSet={`${import.meta.env.BASE_URL}images/area-rear-800.webp 800w, ${import.meta.env.BASE_URL}images/area-rear-1200.webp 1200w`} sizes="(min-width:1024px) 45vw, 100vw" />
+                <img
+                  src={`${import.meta.env.BASE_URL}images/area-rear-800.webp`}
+                  alt={t('areas.photoAlt')}
+                  loading="lazy"
+                  className="w-full h-full object-cover object-[50%_70%]"
+                />
+              </picture>
               <div className="absolute inset-0 bg-gradient-to-t from-gray-900 to-transparent opacity-60"></div>
               <div className="absolute bottom-4 start-4 text-white">
                 <div className="flex items-center">

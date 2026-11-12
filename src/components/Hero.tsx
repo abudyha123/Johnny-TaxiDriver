@@ -1,94 +1,49 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import Button from './ui/Button';
-import { CalendarClock, Phone, MessageCircle, ShieldCheck } from 'lucide-react';
+import { CalendarClock, Phone, MessageCircle } from 'lucide-react';
+
+const img = (w: number) => `${import.meta.env.BASE_URL}images/hero-taxi-${w}.webp`;
 
 const Hero: React.FC = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="relative bg-gray-900 text-white pt-24 pb-16 md:pt-32 md:pb-24 overflow-hidden">
-      {/* Decorative floating glow blobs */}
-      <div className="absolute top-10 -left-20 w-72 h-72 bg-yellow-500 rounded-full blur-3xl opacity-20 animate-float pointer-events-none"></div>
-      <div className="absolute bottom-10 right-10 w-80 h-80 bg-blue-500 rounded-full blur-3xl opacity-20 animate-float-delayed pointer-events-none"></div>
-
-      {/* Yellow diagonal accent */}
-      <div className="absolute bottom-0 right-0 w-full h-24 bg-yellow-500 transform translate-y-12 -skew-y-3 z-0 opacity-90"></div>
-
-      <div className="container mx-auto px-4 md:px-6 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <div className="max-w-2xl">
-            <div className="inline-block px-4 py-1 rounded-full bg-yellow-500 text-gray-900 font-semibold text-sm mb-6 animate-fadeIn">
-              {t('hero.badge')}
-            </div>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight animate-slideUp">
-              {t('hero.headline1')} <br />
-              <span className="text-gradient">{t('hero.headline2')}</span>
-            </h1>
-            <p className="text-lg md:text-xl text-gray-200 mb-8 max-w-2xl animate-slideUp animation-delay-100">
-              {t('hero.description')}
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-4 animate-slideUp animation-delay-200">
-              <Button
-                variant="primary"
-                size="lg"
-                onClick={() => {
-                  const bookingSection = document.getElementById('booking');
-                  bookingSection?.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="flex items-center justify-center"
-              >
-                <CalendarClock size={20} className="me-2" />
-                {t('hero.bookRide')}
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => {
-                  window.location.href = 'tel:+972545928999';
-                }}
-                className="flex items-center justify-center !text-white !border-white hover:!bg-white/10"
-              >
-                <Phone size={20} className="me-2" />
-                {t('hero.callNow')}
-              </Button>
-            </div>
-
-            <a
-              href="https://wa.me/972545928999"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center text-green-400 hover:text-green-300 font-medium mt-6 animate-slideUp animation-delay-200"
-            >
-              <MessageCircle size={18} className="me-2" />
-              {t('hero.whatsappCta')}
+    <section className="hero relative bg-[#0b0f14] text-white overflow-hidden" aria-labelledby="hero-title">
+      <div className="container mx-auto px-4 md:px-6 hero-grid">
+        <div className="hero-copy">
+          <span className="tag-sign rise d1">{t('hero.badge')}</span>
+          <h1 id="hero-title" className="font-display font-black leading-[1.03] tracking-tight mt-5 mb-4 text-[40px] sm:text-5xl lg:text-[4.4rem]">
+            <span className="rise-word"><span>{t('hero.headline1')}</span></span>
+            <br />
+            <span className="rise-word"><span className="hero-hl">{t('hero.headline2')}</span></span>
+          </h1>
+          <p className="rise d3 text-slate-300 text-[17px] md:text-xl leading-relaxed max-w-[34rem] mb-6">{t('hero.description')}</p>
+          <span className="road-dash rise d3" aria-hidden="true" />
+          <div className="rise d4 flex flex-col sm:flex-row gap-3">
+            <a href="#booking" className="btn-yellow">
+              <CalendarClock size={20} aria-hidden="true" />
+              {t('hero.bookRide')}
             </a>
-
-            <div className="mt-8 flex items-center text-gray-200 animate-slideUp animation-delay-300">
-              <div className="w-12 h-0.5 bg-yellow-500 me-4"></div>
-              <p className="text-sm font-medium">{t('hero.approved')}</p>
-            </div>
+            <a href="tel:+972545928999" className="btn-outline">
+              <Phone size={20} aria-hidden="true" />
+              {t('hero.callNow')}
+              <span className="ltr-num text-[15px] opacity-80 font-semibold">054-592-8999</span>
+            </a>
           </div>
-
-          <div className="relative animate-fadeIn">
-            <div className="relative rounded-2xl overflow-hidden shadow-2xl border-4 border-white/10 aspect-[3/4] after:content-[''] after:absolute after:left-[62%] after:top-[62%] after:w-[25%] after:h-[9%] after:rounded after:backdrop-blur-md after:bg-black/50">
-              <img
-                src="/images/vehicle-front.jpg"
-                alt="Johnny Taxi - wheelchair accessible vehicle"
-                className="w-full h-full object-cover object-[center_15%]"
-              />
-            </div>
-            <div className="absolute -bottom-6 start-6 bg-white text-gray-900 rounded-xl shadow-xl px-5 py-3 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-yellow-500 flex items-center justify-center flex-shrink-0">
-                <ShieldCheck size={20} className="text-gray-900" />
-              </div>
-              <p className="font-semibold text-sm leading-tight">{t('hero.approved')}</p>
-            </div>
-          </div>
+          <a href="https://wa.me/972545928999" target="_blank" rel="noopener noreferrer" className="rise d5 wa-link mt-5">
+            <span className="wa-ico" aria-hidden="true"><MessageCircle size={20} /></span>
+            <span className="wa-text">{t('hero.whatsappCta')}</span>
+          </a>
         </div>
+
+        <figure className="hero-media">
+          <picture>
+            <source type="image/webp" srcSet={`${img(900)} 900w, ${img(1400)} 1400w, ${img(2400)} 2400w`} sizes="(min-width:1024px) 58vw, 100vw" />
+            <img src={img(1400)} width={1400} height={781} fetchPriority="high" alt={t('hero.imageAlt')} />
+          </picture>
+        </figure>
       </div>
-    </div>
+    </section>
   );
 };
 
