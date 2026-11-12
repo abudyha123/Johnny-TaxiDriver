@@ -1,18 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Phone, MessageCircle, Search, LogOut, RotateCcw, Accessibility, Users, MapPin, Clock, AlertTriangle, ChevronDown } from 'lucide-react';
-import { requestStore } from '../lib/requests/store';
+import { getRequestStore, REQUESTS_MODE } from '../lib/requests/store';
 import { resetDemoData } from '../lib/requests/demoStore';
+import { watchAdmin, signIn, signOutAdmin, sendReset, authErrorHe, type AuthState } from './adminAuth';
 import { RideRequest, RequestStatus, STATUSES, STATUS_LABEL_HE, toWhatsAppNumber } from '../lib/requests/types';
 
 /**
  * Johnny's private request screen (Hebrew, mobile-first).
- * DEMO: sign-in below is a placeholder and data is fictitious and local to this browser.
- * In production the screen is shown only to Johnny's signed-in account and the data rules
- * on the server refuse everyone else – hiding this page is not what protects the data.
+ * firebase mode: Firebase Authentication + an allowlist (/admins) checked again by the
+ * server rules – hiding this page is not what protects the data.
+ * demo mode: fictitious data local to this browser, placeholder password "demo".
  */
-
-const DEMO_PASSWORD = 'demo';
-const SESSION_KEY = 'jt_demo_admin';
+const IS_DEMO = REQUESTS_MODE === 'demo';
 
 const STATUS_STYLE: Record<RequestStatus, string> = {
   new: 'bg-yellow-100 text-yellow-900 border-yellow-300',
@@ -44,22 +43,51 @@ function customerWhatsApp(r: RideRequest) {
   return `https://wa.me/${n}?text=${encodeURIComponent(text)}`;
 }
 
-const Login: React.FC<{ onIn: () => void }> = ({ onIn }) => {
+const Login: React.FC<{ notAllowed?: string }> = ({ notAllowed }) => {
+  const [email, setEmail] = useState('');
   const [pw, setPw] = useState('');
   const [err, setErr] = useState('');
+  const [info, setInfo] = useState('');
+  const [busy, setBusy] = useState(false);
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault(); if (busy) return;
+    setBusy(true); setErr(''); setInfo('');
+    try { await signIn(email, pw); } catch (x) { setErr(authErrorHe(x)); } finally { setBusy(false); }
+  };
   return (
     <div className="min-h-screen bg-[#0b0f14] text-white flex items-center justify-center p-6">
-      <form className="w-full max-w-sm bg-white/5 border border-white/10 rounded-2xl p-6" onSubmit={(e) => { e.preventDefault(); if (pw === DEMO_PASSWORD) { sessionStorage.setItem(SESSION_KEY, '1'); onIn(); } else setErr('סיסמה שגויה'); }}>
+      <form className="w-full max-w-sm bg-white/5 border border-white/10 rounded-2xl p-6" onSubmit={submit} noValidate>
         <p className="text-yellow-400 font-bold">ג׳וני טקסי</p>
         <h1 className="text-2xl font-black mt-1 mb-4">כניסה לניהול בקשות</h1>
-        <div className="text-sm bg-yellow-400/10 border border-yellow-400/40 text-yellow-100 rounded-lg p-3 mb-4">
-          מצב הדגמה: הכניסה כאן אינה מאובטחת ונועדה רק להצגת המסך. סיסמת ההדגמה: <b className="ltr-num">demo</b>.
-          בגרסה האמיתית הכניסה תהיה לחשבון של ג׳וני בלבד.
-        </div>
+        {IS_DEMO && (
+          <div className="text-sm bg-yellow-400/10 border border-yellow-400/40 text-yellow-100 rounded-lg p-3 mb-4">
+            מצב הדגמה: הכניסה כאן אינה מאובטחת ונועדה רק להצגת המסך. סיסמת ההדגמה: <b className="ltr-num">demo</b>.
+          </div>
+        )}
+        {notAllowed && (
+          <div className="text-sm bg-red-500/15 border border-red-400/50 text-red-100 rounded-lg p-3 mb-4" role="alert">
+            לחשבון <b dir="ltr">{notAllowed}</b> אין הרשאה למסך הזה.
+            <button type="button" className="underline ms-1" onClick={() => signOutAdmin()}>יציאה</button>
+          </div>
+        )}
+        {!IS_DEMO && (
+          <>
+            <label className="block text-sm mb-1" htmlFor="em">אימייל</label>
+            <input id="em" type="email" dir="ltr" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-lg px-3 py-3 text-gray-900 mb-3" autoComplete="username" required />
+          </>
+        )}
         <label className="block text-sm mb-1" htmlFor="pw">סיסמה</label>
-        <input id="pw" type="password" value={pw} onChange={(e) => setPw(e.target.value)} className="w-full rounded-lg px-3 py-3 text-gray-900" autoComplete="current-password" />
+        <input id="pw" type="password" value={pw} onChange={(e) => setPw(e.target.value)} className="w-full rounded-lg px-3 py-3 text-gray-900" autoComplete="current-password" required />
         {err && <p className="text-red-300 text-sm mt-2" role="alert">{err}</p>}
-        <button className="btn-yellow w-full mt-4" type="submit">כניסה</button>
+        {info && <p className="text-green-300 text-sm mt-2" role="status">{info}</p>}
+        <button className="btn-yellow w-full mt-4 disabled:opacity-60" type="submit" disabled={busy}>{busy ? 'נכנסים…' : 'כניסה'}</button>
+        {!IS_DEMO && (
+          <button type="button" className="w-full mt-3 text-sm text-gray-300 underline"
+            onClick={async () => {
+              if (!email.trim()) { setErr('כתבו קודם את האימייל.'); return; }
+              try { await sendReset(email); setInfo('אם החשבון קיים, נשלח אליו קישור לאיפוס סיסמה.'); setErr(''); } catch (x) { setErr(authErrorHe(x)); }
+            }}>שכחתי סיסמה</button>
+        )}
       </form>
     </div>
   );
@@ -70,7 +98,11 @@ const RequestCard: React.FC<{ r: RideRequest; dup: boolean; onStatus: (s: Reques
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
   const wa = customerWhatsApp(r);
-  const apply = async (s: RequestStatus) => { setBusy(true); try { await onStatus(s); } finally { setBusy(false); setPending(null); } };
+  const [err, setErr] = useState('');
+  const apply = async (s: RequestStatus) => {
+    setBusy(true); setErr('');
+    try { await onStatus(s); } catch { setErr('העדכון לא נשמר. בדקו את החיבור ונסו שוב.'); } finally { setBusy(false); setPending(null); }
+  };
   const choose = (s: RequestStatus) => (s === 'confirmed' || s === 'cancelled' ? setPending(s) : apply(s));
 
   return (
@@ -102,6 +134,7 @@ const RequestCard: React.FC<{ r: RideRequest; dup: boolean; onStatus: (s: Reques
         <a href={`tel:${r.phone.replace(/[^\d+]/g, '')}`} className="inline-flex items-center gap-2 min-h-[44px] px-4 rounded-xl border border-gray-300 font-bold text-gray-800"><Phone size={18} /><span className="ltr-num">{r.phone}</span></a>
       </div>
 
+      {err && <p className="mt-3 text-sm text-red-700" role="alert">{err}</p>}
       <fieldset className="mt-4" disabled={busy}>
         <legend className="text-xs font-bold text-gray-500 mb-2">עדכון סטטוס</legend>
         <div className="flex flex-wrap gap-2">
@@ -139,8 +172,9 @@ const RequestCard: React.FC<{ r: RideRequest; dup: boolean; onStatus: (s: Reques
 };
 
 const AdminApp: React.FC = () => {
-  const [signedIn, setSignedIn] = useState(() => sessionStorage.getItem(SESSION_KEY) === '1');
-  const [items, setItems] = useState<RideRequest[]>([]);
+  const [authState, setAuthState] = useState<AuthState>({ kind: 'loading' });
+  const [items, setItems] = useState<RideRequest[] | null>(null);
+  const [loadErr, setLoadErr] = useState('');
   const [filter, setFilter] = useState<RequestStatus | 'all'>('all');
   const [q, setQ] = useState('');
   const [sort, setSort] = useState<'received' | 'ride'>('received');
@@ -152,35 +186,56 @@ const AdminApp: React.FC = () => {
     return () => { m.remove(); };
   }, []);
 
-  const refresh = () => requestStore.list().then(setItems);
-  useEffect(() => { if (signedIn) refresh(); }, [signedIn]);
-  useEffect(() => { // new requests from the site in another tab show up here (demo)
-    const on = (e: StorageEvent) => { if (e.key?.startsWith('jt_demo_requests')) refresh(); };
-    window.addEventListener('storage', on); return () => window.removeEventListener('storage', on);
+  useEffect(() => {
+    let off = () => {};
+    let alive = true;
+    watchAdmin(setAuthState).then((u) => { if (alive) off = u; else u(); }).catch(() => setAuthState({ kind: 'signedOut' }));
+    return () => { alive = false; off(); };
   }, []);
 
+  const isAdmin = authState.kind === 'admin';
+  const who = authState.kind === 'admin' ? authState.user.email : '';
+
+  // live list: a request sent from any device appears here without refreshing
+  useEffect(() => {
+    if (!isAdmin) { setItems(null); return; }
+    let off = () => {};
+    let alive = true;
+    getRequestStore().then((store) => {
+      if (!alive) return;
+      off = store.subscribe((list) => { setItems(list); setLoadErr(''); },
+        () => setLoadErr('לא הצלחנו לטעון את הבקשות. בדקו את החיבור לאינטרנט, או שאין לחשבון הרשאה.'));
+    }).catch(() => setLoadErr('לא הצלחנו להתחבר למערכת הבקשות.'));
+    return () => { alive = false; off(); };
+  }, [isAdmin]);
+
+  const list = items || [];
+
   const counts = useMemo(() => {
-    const c: Record<string, number> = { all: items.length };
-    STATUSES.forEach((s) => (c[s] = items.filter((r) => r.status === s).length));
+    const c: Record<string, number> = { all: list.length };
+    STATUSES.forEach((s) => (c[s] = list.filter((r) => r.status === s).length));
     return c;
-  }, [items]);
+  }, [list]);
 
   // same phone + same ride date/time from two different submissions → flag, Johnny decides
   const dupIds = useMemo(() => {
     const seen = new Map<string, string[]>();
-    items.forEach((r) => { const k = `${r.phone.replace(/\D/g, '')}|${r.date}|${r.time}`; seen.set(k, [...(seen.get(k) || []), r.id]); });
+    list.forEach((r) => { const k = `${r.phone.replace(/\D/g, '')}|${r.date}|${r.time}`; seen.set(k, [...(seen.get(k) || []), r.id]); });
     return new Set([...seen.values()].filter((v) => v.length > 1).flat());
-  }, [items]);
+  }, [list]);
 
   const shown = useMemo(() => {
     const s = q.trim();
-    return items
+    return list
       .filter((r) => filter === 'all' || r.status === filter)
       .filter((r) => !s || [r.name, r.phone, r.code, r.from, r.to].some((x) => x.includes(s)))
       .sort((a, b) => (sort === 'ride' ? `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`) : b.createdAt.localeCompare(a.createdAt)));
-  }, [items, filter, q, sort]);
+  }, [list, filter, q, sort]);
 
-  if (!signedIn) return <Login onIn={() => setSignedIn(true)} />;
+  if (authState.kind === 'loading') {
+    return <div className="min-h-screen bg-[#0b0f14] text-white flex items-center justify-center" role="status">טוען…</div>;
+  }
+  if (authState.kind !== 'admin') return <Login notAllowed={authState.kind === 'notAllowed' ? authState.email : undefined} />;
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -191,13 +246,19 @@ const AdminApp: React.FC = () => {
             <h1 className="text-xl font-black">בקשות נסיעה</h1>
           </div>
           <div className="flex items-center gap-2">
-            <button type="button" onClick={() => { resetDemoData(); refresh(); }} className="icon-btn" aria-label="איפוס נתוני ההדגמה" title="איפוס נתוני ההדגמה"><RotateCcw size={18} /></button>
-            <button type="button" onClick={() => { sessionStorage.removeItem(SESSION_KEY); setSignedIn(false); }} className="icon-btn" aria-label="יציאה" title="יציאה"><LogOut size={18} /></button>
+            {IS_DEMO && <button type="button" onClick={() => resetDemoData()} className="icon-btn" aria-label="איפוס נתוני ההדגמה" title="איפוס נתוני ההדגמה"><RotateCcw size={18} /></button>}
+            <button type="button" onClick={() => signOutAdmin()} className="icon-btn" aria-label="יציאה" title="יציאה"><LogOut size={18} /></button>
           </div>
         </div>
-        <div className="bg-yellow-400 text-gray-900 text-sm font-semibold text-center px-4 py-1.5">
-          הדגמה: נתונים פיקטיביים שנשמרים רק בדפדפן הזה. בקשה שנשמרת אינה אישור נסיעה.
-        </div>
+        {IS_DEMO ? (
+          <div className="bg-yellow-400 text-gray-900 text-sm font-semibold text-center px-4 py-1.5">
+            הדגמה: נתונים פיקטיביים שנשמרים רק בדפדפן הזה. בקשה שנשמרת אינה אישור נסיעה.
+          </div>
+        ) : (
+          <div className="bg-white/10 text-gray-200 text-xs text-center px-4 py-1">
+            מחובר כ־<span dir="ltr">{who}</span> · בקשות אמיתיות · שינוי סטטוס לא שולח הודעה ללקוח
+          </div>
+        )}
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-5">
@@ -224,13 +285,16 @@ const AdminApp: React.FC = () => {
           </label>
         </div>
 
-        {shown.length === 0
+        {loadErr && <p className="mt-4 rounded-lg bg-red-50 border border-red-200 text-red-800 p-3 text-sm" role="alert">{loadErr}</p>}
+        {items === null && !loadErr
+          ? <p className="mt-10 text-center text-gray-500" role="status">טוען בקשות…</p>
+          : shown.length === 0
           ? <p className="mt-10 text-center text-gray-500">אין בקשות להצגה.</p>
           : (
             <ul className="mt-4 grid gap-4">
               {shown.map((r) => (
                 <RequestCard key={r.id} r={r} dup={dupIds.has(r.id)}
-                  onStatus={async (s) => { const u = await requestStore.updateStatus(r.id, s, 'johnny (demo)'); setItems((list) => list.map((x) => (x.id === u.id ? u : x))); }} />
+                  onStatus={async (s) => { const store = await getRequestStore(); await store.updateStatus(r.id, s, who); }} />
               ))}
             </ul>
           )}

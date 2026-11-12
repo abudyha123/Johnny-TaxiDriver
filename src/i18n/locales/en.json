@@ -250,10 +250,8 @@
       "yes": "Yes",
       "no": "No"
     },
-    "submit": "Send request via WhatsApp",
-    "submitting": "Opening WhatsApp...",
-    "successTitle": "One more step",
-    "successDesc": "We opened WhatsApp with your request details. Tap \"Send\" in WhatsApp to deliver it to Johnny.",
+    "submit": "Send request",
+    "submitting": "Saving your request…",
     "bookAnother": "Book Another Ride",
     "errors": {
       "name": "Name is required",
@@ -282,10 +280,15 @@
       "code": "Request no."
     },
     "disclaimer": "Sending this request is not a booking confirmation. Your ride will be confirmed with Johnny.",
-    "openWhatsapp": "Open WhatsApp",
     "requestCode": "Your request number",
-    "saved": "Your request was saved and will be handled by Johnny.",
-    "saveFailed": "We couldn’t save the request. Please send it on WhatsApp – all the details are already in the message."
+    "savedTitle": "Your request was saved",
+    "savedDesc": "Johnny has received your request and will get back to you to arrange and confirm the ride.",
+    "demoNote": "Demo mode: this request was saved in this browser only and was not sent to Johnny.",
+    "alsoWhatsapp": "Also send the details on WhatsApp",
+    "failTitle": "Your request was not saved",
+    "failDesc": "We couldn’t save your request, so Johnny hasn’t received it yet. Send it on WhatsApp – all the details are ready in the message – or call.",
+    "sendWhatsapp": "Send the request on WhatsApp",
+    "retry": "Try again"
   },
   "services": {
     "title": "Our Services",

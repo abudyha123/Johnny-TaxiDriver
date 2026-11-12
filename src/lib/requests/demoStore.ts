@@ -41,8 +41,10 @@ function load(): RideRequest[] {
   } catch { /* storage unavailable */ }
   const s = seed(); save(s); return s;
 }
+const CHANGED = 'jt-demo-changed';
 function save(list: RideRequest[]) {
   try { localStorage.setItem(KEY, JSON.stringify(list)); } catch { /* ignore */ }
+  window.dispatchEvent(new Event(CHANGED));
 }
 
 export const demoStore: RequestStore = {
@@ -57,18 +59,23 @@ export const demoStore: RequestStore = {
     save([request, ...list]);
     return { created: true, request };
   },
-  async list() {
-    return load().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  subscribe(onData) {
+    const push = () => onData(load().sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+    // same tab (CHANGED) and other tabs of this browser (storage event)
+    const onStorage = (e: StorageEvent) => { if (e.key === KEY) push(); };
+    window.addEventListener(CHANGED, push);
+    window.addEventListener('storage', onStorage);
+    push();
+    return () => { window.removeEventListener(CHANGED, push); window.removeEventListener('storage', onStorage); };
   },
   async updateStatus(id: string, status: RequestStatus, by: string) {
     const list = load();
     const i = list.findIndex((r) => r.id === id);
     if (i < 0) throw new Error('not found');
     const r = list[i];
-    if (r.status === status) return r;
-    const next = { ...r, status, history: [...r.history, { status, at: new Date().toISOString(), by }] };
-    list[i] = next; save(list);
-    return next;
+    if (r.status === status) return;
+    list[i] = { ...r, status, history: [...r.history, { status, at: new Date().toISOString(), by }] };
+    save(list);
   },
 };
 

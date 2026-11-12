@@ -1,0 +1,130 @@
+rules_version = '2';
+
+// Johnny Taxi – Cloud Firestore security rules.
+// The public website may only CREATE a well-formed ride request. Nobody but an account
+// listed in /admins (added by hand in the Firebase console) can read or change requests.
+// Everything not allowed below is denied.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function str(v, lo, hi) { return v is string && v.size() >= lo && v.size() <= hi; }
+    function optStr(d, k, hi) { return !(k in d) || (d[k] is string && d[k].size() >= 1 && d[k].size() <= hi); }
+
+    function validNewRequest(id, d) {
+      return d.keys().hasAll(['v', 'id', 'code', 'name', 'phone', 'phoneKey', 'from', 'to', 'date', 'time',
+                              'passengers', 'wheelchair', 'wheelchairCount', 'lang', 'status', 'history', 'createdAt'])
+        && d.keys().hasOnly(['v', 'id', 'code', 'name', 'phone', 'phoneKey', 'from', 'to', 'date', 'time',
+                             'passengers', 'wheelchair', 'wheelchairCount', 'lang', 'status', 'history', 'createdAt',
+                             'email', 'notes'])
+        && d.v == 1
+        && d.id == id && id.matches('^[A-Za-z0-9-]{8,64}$')
+        && d.code is string && d.code.matches('^JT-[A-Z2-9]{5}$')
+        && str(d.name, 1, 80)
+        && d.phone is string && d.phone.matches('^[0-9 +()-]{7,20}$')
+        && d.phoneKey == d.phone.replace('[^0-9]', '')
+        && d.phoneKey.matches('^[0-9]{7,15}$')
+        && str(d.from, 2, 200) && str(d.to, 2, 200)
+        && d.date is string && d.date.matches('^20[0-9]{2}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$')
+        && d.time is string && d.time.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')
+        && d.passengers is int && d.passengers >= 1 && d.passengers <= 8
+        && d.wheelchair is bool
+        && d.wheelchairCount is int
+        && (d.wheelchair ? (d.wheelchairCount >= 1 && d.wheelchairCount <= 3) : d.wheelchairCount == 0)
+        && optStr(d, 'email', 120)
+        && optStr(d, 'notes', 1000)
+        && d.lang in ['he', 'en', 'ar']
+        && d.status == 'new'
+        && d.history == []
+        && d.createdAt == request.time;
+    }
+
+    // ---------- ride requests ----------
+    match /requests/{id} {
+      // Public: create only, and only together with the flood-control markers below
+      // (written in the same atomic batch). A second write with the same id is an
+      // update, which the public may never do – so a retry can't create a duplicate.
+      allow create: if validNewRequest(id, request.resource.data)
+        && existsAfter(/databases/$(database)/documents/receipts/$(id))
+        && getAfter(/databases/$(database)/documents/throttle/global).data.lastId == id
+        && getAfter(/databases/$(database)/documents/throttlePhones/$(request.resource.data.phoneKey)).data.lastId == id;
+
+      allow get, list: if isAdmin();
+
+      // Admin: only the status and its history may change; customer details stay as sent.
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'history', 'updatedAt', 'updatedBy'])
+        && request.resource.data.status in ['new', 'in_progress', 'confirmed', 'cancelled', 'completed']
+        && request.resource.data.history is list
+        && request.resource.data.history.size() == resource.data.history.size() + 1
+        && request.resource.data.history[0:resource.data.history.size()] == resource.data.history
+        && validHistoryEntry(request.resource.data.history[resource.data.history.size()], request.resource.data.status)
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.updatedBy == request.auth.token.email;
+
+      allow delete: if false;
+    }
+
+    function validHistoryEntry(h, status) {
+      return h is map && h.keys().hasOnly(['status', 'at', 'by']) && h.keys().hasAll(['status', 'at', 'by'])
+        && h.status == status
+        && h.by == request.auth.token.email
+        && h.at is timestamp
+        && h.at > request.time - duration.value(10, 'm')
+        && h.at < request.time + duration.value(10, 'm');
+    }
+
+    // Content-free proof that a request id was saved. Ids are random UUIDs, so this
+    // reveals nothing; it lets a customer's retry learn that the first attempt arrived.
+    match /receipts/{id} {
+      allow get: if true;
+      allow list, update, delete: if false;
+      allow create: if request.resource.data.keys().hasOnly(['createdAt'])
+        && request.resource.data.createdAt == request.time
+        && existsAfter(/databases/$(database)/documents/requests/$(id))
+        && !exists(/databases/$(database)/documents/requests/$(id));
+    }
+
+    // ---------- flood control (server-side) ----------
+    // Site-wide: at most one new request every 10 seconds (≈8,600 a day at most,
+    // which keeps an attack inside the no-cost daily write quota).
+    match /throttle/global {
+      allow read, delete: if false;
+      allow create: if markerOk(request.resource.data);
+      allow update: if markerOk(request.resource.data)
+        && request.time > resource.data.lastAt + duration.value(10, 's');
+    }
+
+    // Per phone number: at most one new request every 2 minutes.
+    match /throttlePhones/{phoneKey} {
+      allow read, delete: if false;
+      allow create: if markerOk(request.resource.data)
+        && getAfter(/databases/$(database)/documents/requests/$(request.resource.data.lastId)).data.phoneKey == phoneKey;
+      allow update: if markerOk(request.resource.data)
+        && getAfter(/databases/$(database)/documents/requests/$(request.resource.data.lastId)).data.phoneKey == phoneKey
+        && request.time > resource.data.lastAt + duration.value(2, 'm');
+    }
+
+    // A marker may only be moved by a brand-new request written in the same batch.
+    function markerOk(d) {
+      return d.keys().hasOnly(['lastAt', 'lastId']) && d.keys().hasAll(['lastAt', 'lastId'])
+        && d.lastAt == request.time
+        && d.lastId is string
+        && existsAfter(/databases/$(database)/documents/requests/$(d.lastId))
+        && !exists(/databases/$(database)/documents/requests/$(d.lastId));
+    }
+
+    // ---------- admin allowlist ----------
+    // Documents here are created by hand in the Firebase console (document id = the
+    // admin's Auth UID). No client can write them.
+    match /admins/{uid} {
+      allow get: if request.auth != null && request.auth.uid == uid;
+      allow list, write: if false;
+    }
+  }
+}

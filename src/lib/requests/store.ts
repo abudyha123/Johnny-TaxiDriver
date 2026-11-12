@@ -3,17 +3,40 @@ import { demoStore } from './demoStore';
 
 /**
  * Storage interface used by the booking form and the admin screen.
- * The demo implementation keeps fictitious data in this browser only.
- * The production implementation (Firebase, planned) will keep the same interface,
- * with server-side rules: the public may only CREATE a request with status "new",
- * never read or change one; only Johnny's signed-in account may read and update.
+ *
+ * Two completely separate modes – demo data never reaches the real database:
+ *  - 'demo'     fictitious data kept in this browser only (localStorage).
+ *  - 'firebase' real customer requests in Cloud Firestore. Server rules (firestore.rules)
+ *               let the public only CREATE a valid request; reading and updating is
+ *               allowed only for accounts listed in /admins by the project owner.
+ *
+ * The mode is 'firebase' when the VITE_FIREBASE_* variables are set, otherwise 'demo'.
+ * VITE_REQUESTS_MODE=demo forces demo even when Firebase is configured.
  */
 export interface RequestStore {
   readonly mode: 'demo' | 'firebase';
-  /** Idempotent: creating the same id twice never makes a second request. */
+  /** Resolves only after the server confirmed the save. Idempotent per request id. */
   create(req: NewRideRequest): Promise<{ created: boolean; request: RideRequest }>;
-  list(): Promise<RideRequest[]>;
-  updateStatus(id: string, status: RequestStatus, by: string): Promise<RideRequest>;
+  /** Live list for the admin screen. Returns an unsubscribe function. */
+  subscribe(onData: (list: RideRequest[]) => void, onError: (e: Error) => void): () => void;
+  updateStatus(id: string, status: RequestStatus, by: string): Promise<void>;
 }
 
-export const requestStore: RequestStore = demoStore;
+const env = import.meta.env;
+export const REQUESTS_MODE: 'demo' | 'firebase' =
+  env.VITE_REQUESTS_MODE !== 'demo' && env.VITE_FIREBASE_PROJECT_ID && env.VITE_FIREBASE_API_KEY && env.VITE_FIREBASE_APP_ID
+    ? 'firebase'
+    : 'demo';
+
+let cached: Promise<RequestStore> | null = null;
+
+/** Firebase code is downloaded only when this is first called. */
+export function getRequestStore(): Promise<RequestStore> {
+  if (!cached) {
+    cached = REQUESTS_MODE === 'firebase'
+      ? import('./firestoreStore').then((m) => m.firestoreStore)
+      : Promise.resolve(demoStore);
+    cached.catch(() => { cached = null; }); // a failed chunk download can be retried
+  }
+  return cached;
+}

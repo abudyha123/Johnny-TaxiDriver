@@ -3,9 +3,9 @@ import { useTranslation } from 'react-i18next';
 import Section from './ui/Section';
 import Input from './ui/Input';
 import Button from './ui/Button';
-import { CalendarClock, Clock, MessageCircle, Phone } from 'lucide-react';
+import { AlertTriangle, CalendarClock, CheckCircle2, Clock, MessageCircle, Phone } from 'lucide-react';
 import { BookingFormData } from '../types';
-import { requestStore } from '../lib/requests/store';
+import { getRequestStore, REQUESTS_MODE } from '../lib/requests/store';
 import { newRequestId, shortCode } from '../lib/requests/types';
 
 const WHATSAPP_NUMBER = '972545928999';
@@ -29,10 +29,10 @@ const BookingForm: React.FC = () => {
   const [errors, setErrors] = useState<Partial<Record<keyof BookingFormData, string>>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
-  const [lastUrl, setLastUrl] = useState('');
   // one id per filled form: pressing "send" again (or a retry) never creates a second request
   const requestIdRef = useRef<string>(newRequestId());
   const inFlight = useRef(false);
+  // 'saved' is set ONLY after the server confirmed the write – never optimistically
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle');
   const code = shortCode(requestIdRef.current);
 
@@ -94,14 +94,14 @@ const BookingForm: React.FC = () => {
   };
 
   // Ordered, readable request for Johnny. It is a request only – the ride is confirmed with Johnny.
-  const buildWhatsAppMessage = (): string => {
+  const buildWhatsAppMessage = (withCode: boolean): string => {
     const L = (k: string) => t(`booking.whatsappLabels.${k}`);
     const access = formData.wheelchairAccess === 'yes'
       ? `${t('booking.fields.yes')} (${L('wheelchairs')}: ${formData.wheelchairCount})`
       : t('booking.fields.no');
     const lines = [
       t('booking.whatsappTitle'),
-      `${L('code')}: ${code}`,
+      ...(withCode ? [`${L('code')}: ${code}`] : []),
       '',
       `${L('name')}: ${formData.name.trim()}`,
       `${L('phone')}: ${formData.phone.trim()}`,
@@ -118,22 +118,14 @@ const BookingForm: React.FC = () => {
     return lines.join('\n');
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (inFlight.current || submitSuccess) return; // blocks double taps while sending
-    if (!validateForm()) return;
-
+  const save = async () => {
+    if (inFlight.current) return; // blocks double taps while saving
     inFlight.current = true;
     setIsSubmitting(true);
-    const message = buildWhatsAppMessage();
-    const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
-    setLastUrl(whatsappUrl);
-    // opened inside the tap so phones don't block it; saving runs in parallel
-    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-
     setSaveState('saving');
     try {
-      await requestStore.create({
+      const store = await getRequestStore();
+      await store.create({
         id: requestIdRef.current,
         code,
         name: formData.name.trim(),
@@ -147,26 +139,38 @@ const BookingForm: React.FC = () => {
         wheelchairCount: formData.wheelchairAccess === 'yes' ? Number(formData.wheelchairCount) : 0,
         email: formData.email.trim() || undefined,
         notes: formData.notes.trim() || undefined,
-        lang: i18n.language,
+        lang: ['he', 'en', 'ar'].includes(i18n.language) ? i18n.language : 'he',
       });
       setSaveState('saved');
     } catch {
-      setSaveState('failed'); // the WhatsApp message still carries every detail
+      setSaveState('failed'); // nothing is claimed; the customer gets WhatsApp / phone instead
     } finally {
+      inFlight.current = false;
       setIsSubmitting(false);
       setSubmitSuccess(true);
       requestAnimationFrame(() => document.getElementById('booking-result')?.scrollIntoView({ block: 'center' }));
     }
   };
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (inFlight.current || submitSuccess) return;
+    if (!validateForm()) return;
+    void save();
+  };
+
+  // Retrying keeps the same request id, so a request that did arrive is never doubled.
+  const retry = () => { void save(); };
+
   const resetForm = () => {
     setFormData({ name: '', phone: '', email: '', pickupAddress: '', destination: '', date: '', time: '', passengers: 1, wheelchairAccess: '', wheelchairCount: 1, notes: '' });
     setSubmitSuccess(false);
-    setLastUrl('');
     setSaveState('idle');
     requestIdRef.current = newRequestId(); // a new form = a new request
     inFlight.current = false;
   };
+
+  const waUrl = (withCode: boolean) => `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(buildWhatsAppMessage(withCode))}`;
 
   return (
     <Section id="booking" background="light">
@@ -239,32 +243,52 @@ const BookingForm: React.FC = () => {
             </div>
 
             <div className="lg:col-span-3 p-8">
-              {submitSuccess ? (
+              {submitSuccess && saveState === 'saved' ? (
                 <div id="booking-result" className="h-full flex flex-col items-center justify-center text-center animate-fadeIn" role="status" aria-live="polite">
                   <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                    <MessageCircle className="h-8 w-8 text-green-600" />
+                    <CheckCircle2 className="h-8 w-8 text-green-600" aria-hidden="true" />
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">{t('booking.successTitle')}</h3>
-                  <p className="text-gray-600 mb-3">
-                    {t('booking.successDesc')}
-                  </p>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">{t('booking.savedTitle')}</h3>
                   <p className="text-gray-800 mb-2">
                     {t('booking.requestCode')}: <strong className="ltr-num">{code}</strong>
                   </p>
-                  {saveState === 'saved' && <p className="text-sm text-green-700 mb-3">{t('booking.saved')}</p>}
-                  {saveState === 'failed' && <p className="text-sm text-red-700 mb-3" role="alert">{t('booking.saveFailed')}</p>}
+                  {REQUESTS_MODE === 'firebase' && <p className="text-gray-600 mb-3">{t('booking.savedDesc')}</p>}
+                  {REQUESTS_MODE === 'demo' && (
+                    <p className="text-sm font-semibold text-orange-900 bg-orange-50 border border-orange-200 rounded-md px-3 py-2 mb-3" role="note">
+                      {t('booking.demoNote')}
+                    </p>
+                  )}
                   <p className="text-sm font-semibold text-gray-800 bg-yellow-50 border border-yellow-200 rounded-md px-3 py-2 mb-6" role="note">
                     {t('booking.disclaimer')}
                   </p>
                   <div className="flex flex-wrap justify-center gap-3">
-                    {lastUrl && (
-                      <a href={lastUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-5 py-3 rounded-lg font-semibold">
-                        <MessageCircle size={18} aria-hidden="true" />
-                        {t('booking.openWhatsapp')}
-                      </a>
-                    )}
+                    <a href={waUrl(true)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 border-2 border-green-600 text-green-700 hover:bg-green-50 px-5 py-3 rounded-lg font-semibold">
+                      <MessageCircle size={18} aria-hidden="true" />
+                      {t('booking.alsoWhatsapp')}
+                    </a>
                     <Button variant="outline" onClick={resetForm}>
                       {t('booking.bookAnother')}
+                    </Button>
+                  </div>
+                </div>
+              ) : submitSuccess ? (
+                <div id="booking-result" className="h-full flex flex-col items-center justify-center text-center animate-fadeIn" role="alert">
+                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                    <AlertTriangle className="h-8 w-8 text-red-600" aria-hidden="true" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">{t('booking.failTitle')}</h3>
+                  <p className="text-gray-700 mb-6">{t('booking.failDesc')}</p>
+                  <div className="flex flex-wrap justify-center gap-3">
+                    <a href={waUrl(false)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-5 py-3 rounded-lg font-semibold">
+                      <MessageCircle size={18} aria-hidden="true" />
+                      {t('booking.sendWhatsapp')}
+                    </a>
+                    <a href="tel:+972545928999" className="inline-flex items-center gap-2 border-2 border-gray-800 text-gray-900 px-5 py-3 rounded-lg font-semibold">
+                      <Phone size={18} aria-hidden="true" />
+                      <span className="ltr-num">054-592-8999</span>
+                    </a>
+                    <Button variant="outline" onClick={retry} disabled={isSubmitting}>
+                      {isSubmitting ? t('booking.submitting') : t('booking.retry')}
                     </Button>
                   </div>
                 </div>
