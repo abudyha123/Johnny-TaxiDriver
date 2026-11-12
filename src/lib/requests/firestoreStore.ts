@@ -1,17 +1,15 @@
 // Real ride requests in Cloud Firestore (Spark plan). Every rule that protects the data
 // lives in firestore.rules – this file only shapes the writes so they pass those rules.
 import {
-  collection, doc, getDoc, onSnapshot, orderBy, query, limit, serverTimestamp,
-  Timestamp, updateDoc, arrayUnion, writeBatch, type DocumentData, FirestoreError,
+  collection, doc, onSnapshot, orderBy, query, limit, serverTimestamp,
+  Timestamp, updateDoc, arrayUnion, increment, writeBatch, type DocumentData, FirestoreError,
 } from 'firebase/firestore';
 import { db } from '../firebase/client';
 import type { RequestStore } from './store';
 import type { NewRideRequest, RideRequest, RequestStatus, StatusChange } from './types';
 
 const SAVE_TIMEOUT_MS = 20000;
-const THROTTLE_WAIT_MS = 11000; // the server accepts at most one new request per 10 s (see rules)
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const DAY_MS = 86400000;
 const toIso = (v: unknown) => (v instanceof Timestamp ? v.toDate().toISOString() : typeof v === 'string' ? v : new Date(0).toISOString());
 
 function fromDoc(id: string, d: DocumentData): RideRequest {
@@ -27,16 +25,12 @@ function fromDoc(id: string, d: DocumentData): RideRequest {
   };
 }
 
-/** Did an earlier attempt of this same request already reach the server? */
-async function alreadySaved(id: string): Promise<boolean> {
-  try { return (await getDoc(doc(db(), 'receipts', id))).exists(); } catch { return false; }
-}
-
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   return Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
 }
 
-async function writeOnce(req: NewRideRequest) {
+// Same day number the rules compute from the server clock (UTC days since 1970).
+async function writeOnce(req: NewRideRequest, day: number) {
   const fs = db();
   const phoneKey = req.phone.replace(/[^0-9]/g, '');
   const data: Record<string, unknown> = {
@@ -48,13 +42,12 @@ async function writeOnce(req: NewRideRequest) {
   if (req.email) data.email = req.email;
   if (req.notes) data.notes = req.notes;
 
-  // One atomic batch: the request, a content-free receipt (lets a retry find out whether
-  // the first attempt arrived) and the two flood-control markers the rules require.
+  // One atomic batch: the request plus the two daily counters the rules require
+  // (site-wide and per phone). Either all three are written or none.
   const b = writeBatch(fs);
   b.set(doc(fs, 'requests', req.id), data);
-  b.set(doc(fs, 'receipts', req.id), { createdAt: serverTimestamp() });
-  b.set(doc(fs, 'throttle', 'global'), { lastAt: serverTimestamp(), lastId: req.id });
-  b.set(doc(fs, 'throttlePhones', phoneKey), { lastAt: serverTimestamp(), lastId: req.id });
+  b.set(doc(fs, 'dailyCount', String(day)), { n: increment(1), lastId: req.id }, { merge: true });
+  b.set(doc(fs, 'phoneDaily', `${day}_${phoneKey}`), { n: increment(1), lastId: req.id }, { merge: true });
   await b.commit();
 }
 
@@ -63,26 +56,26 @@ export const firestoreStore: RequestStore = {
 
   async create(req) {
     const attempt = async () => {
-      for (let i = 0; ; i++) {
-        try {
-          await writeOnce(req);
-          return true;
-        } catch (e) {
-          if (await alreadySaved(req.id)) return false; // the earlier attempt went through
-          const denied = e instanceof FirestoreError && e.code === 'permission-denied';
-          // Most likely another customer's request arrived in the same 10 s: wait and retry.
-          if (denied && i < 1) { await sleep(THROTTLE_WAIT_MS); continue; }
-          throw e;
-        }
+      const now = Date.now();
+      const day = Math.floor(now / DAY_MS);
+      try {
+        await writeOnce(req, day);
+      } catch (e) {
+        // Only if this device's clock is within minutes of UTC midnight may it disagree with
+        // the server about the day number: retry once with the neighbouring day.
+        const intoDay = now - day * DAY_MS;
+        const near = intoDay < 10 * 60000 ? day - 1 : intoDay > DAY_MS - 10 * 60000 ? day + 1 : null;
+        if (!(e instanceof FirestoreError && e.code === 'permission-denied') || near === null) throw e;
+        await writeOnce(req, near);
       }
     };
-    const created = await withTimeout(attempt(), SAVE_TIMEOUT_MS);
+    await withTimeout(attempt(), SAVE_TIMEOUT_MS);
     const now = new Date().toISOString();
-    return { created, request: { ...req, createdAt: now, status: 'new', history: [{ status: 'new', at: now, by: 'website' }] } };
+    return { created: true, request: { ...req, createdAt: now, status: 'new', history: [{ status: 'new', at: now, by: 'website' }] } };
   },
 
   subscribe(onData, onError) {
-    const q = query(collection(db(), 'requests'), orderBy('createdAt', 'desc'), limit(500));
+    const q = query(collection(db(), 'requests'), orderBy('createdAt', 'desc'), limit(200));
     return onSnapshot(q, (snap) => onData(snap.docs.map((d) => fromDoc(d.id, d.data()))), (e) => onError(e));
   },
 

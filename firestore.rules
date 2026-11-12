@@ -44,15 +44,23 @@ service cloud.firestore {
         && d.createdAt == request.time;
     }
 
+    // UTC day number; the client sends the same key (see firestoreStore.ts).
+    function todayKey() { return string(math.floor(request.time.toMillis() / 86400000)); }
+
+    // Business-scale caps (per UTC day). They bound how many requests – and therefore
+    // writes – the public can create; they do NOT make it impossible to exhaust the
+    // free quota (denied attempts still cost reads, see FIREBASE_SETUP.md).
+    function siteDailyCap() { return 150; }
+    function phoneDailyCap() { return 4; }
+
     // ---------- ride requests ----------
     match /requests/{id} {
-      // Public: create only, and only together with the flood-control markers below
-      // (written in the same atomic batch). A second write with the same id is an
-      // update, which the public may never do – so a retry can't create a duplicate.
+      // Public: create only, together with the two daily counters below in the same
+      // atomic batch. A second write with the same id is an update, which the public
+      // may never do – so a retry can't create a duplicate.
       allow create: if validNewRequest(id, request.resource.data)
-        && existsAfter(/databases/$(database)/documents/receipts/$(id))
-        && getAfter(/databases/$(database)/documents/throttle/global).data.lastId == id
-        && getAfter(/databases/$(database)/documents/throttlePhones/$(request.resource.data.phoneKey)).data.lastId == id;
+        && getAfter(/databases/$(database)/documents/dailyCount/$(todayKey())).data.lastId == id
+        && getAfter(/databases/$(database)/documents/phoneDaily/$(todayKey() + '_' + request.resource.data.phoneKey)).data.lastId == id;
 
       allow get, list: if isAdmin();
 
@@ -79,41 +87,25 @@ service cloud.firestore {
         && h.at < request.time + duration.value(10, 'm');
     }
 
-    // Content-free proof that a request id was saved. Ids are random UUIDs, so this
-    // reveals nothing; it lets a customer's retry learn that the first attempt arrived.
-    match /receipts/{id} {
-      allow get: if true;
-      allow list, update, delete: if false;
-      allow create: if request.resource.data.keys().hasOnly(['createdAt'])
-        && request.resource.data.createdAt == request.time
-        && existsAfter(/databases/$(database)/documents/requests/$(id))
-        && !exists(/databases/$(database)/documents/requests/$(id));
-    }
-
-    // ---------- flood control (server-side) ----------
-    // Site-wide: at most one new request every 10 seconds (≈8,600 a day at most,
-    // which keeps an attack inside the no-cost daily write quota).
-    match /throttle/global {
+    // ---------- daily counters (flood control) ----------
+    // Each new request increments both counters by exactly 1. Nobody can read them.
+    match /dailyCount/{day} {
       allow read, delete: if false;
-      allow create: if markerOk(request.resource.data);
-      allow update: if markerOk(request.resource.data)
-        && request.time > resource.data.lastAt + duration.value(10, 's');
+      allow create, update: if day == todayKey()
+        && counterOk(request.resource.data, resource == null ? 0 : resource.data.n, siteDailyCap());
     }
 
-    // Per phone number: at most one new request every 2 minutes.
-    match /throttlePhones/{phoneKey} {
+    match /phoneDaily/{key} {
       allow read, delete: if false;
-      allow create: if markerOk(request.resource.data)
-        && getAfter(/databases/$(database)/documents/requests/$(request.resource.data.lastId)).data.phoneKey == phoneKey;
-      allow update: if markerOk(request.resource.data)
-        && getAfter(/databases/$(database)/documents/requests/$(request.resource.data.lastId)).data.phoneKey == phoneKey
-        && request.time > resource.data.lastAt + duration.value(2, 'm');
+      allow create, update: if counterOk(request.resource.data, resource == null ? 0 : resource.data.n, phoneDailyCap())
+        && key == todayKey() + '_' + getAfter(/databases/$(database)/documents/requests/$(request.resource.data.lastId)).data.phoneKey;
     }
 
-    // A marker may only be moved by a brand-new request written in the same batch.
-    function markerOk(d) {
-      return d.keys().hasOnly(['lastAt', 'lastId']) && d.keys().hasAll(['lastAt', 'lastId'])
-        && d.lastAt == request.time
+    // n goes up by one, stays under the cap, and points at a brand-new request
+    // written in the same batch.
+    function counterOk(d, prev, cap) {
+      return d.keys().hasOnly(['n', 'lastId']) && d.keys().hasAll(['n', 'lastId'])
+        && d.n is int && d.n == prev + 1 && d.n <= cap
         && d.lastId is string
         && existsAfter(/databases/$(database)/documents/requests/$(d.lastId))
         && !exists(/databases/$(database)/documents/requests/$(d.lastId));
