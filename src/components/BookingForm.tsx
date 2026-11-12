@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Section from './ui/Section';
 import Input from './ui/Input';
 import Button from './ui/Button';
 import { CalendarClock, Clock, MessageCircle, Phone } from 'lucide-react';
 import { BookingFormData } from '../types';
+import { requestStore } from '../lib/requests/store';
+import { newRequestId, shortCode } from '../lib/requests/types';
 
 const WHATSAPP_NUMBER = '972545928999';
 
 const BookingForm: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [formData, setFormData] = useState<BookingFormData>({
     name: '',
     phone: '',
@@ -28,6 +30,11 @@ const BookingForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [lastUrl, setLastUrl] = useState('');
+  // one id per filled form: pressing "send" again (or a retry) never creates a second request
+  const requestIdRef = useRef<string>(newRequestId());
+  const inFlight = useRef(false);
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle');
+  const code = shortCode(requestIdRef.current);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -94,6 +101,7 @@ const BookingForm: React.FC = () => {
       : t('booking.fields.no');
     const lines = [
       t('booking.whatsappTitle'),
+      `${L('code')}: ${code}`,
       '',
       `${L('name')}: ${formData.name.trim()}`,
       `${L('phone')}: ${formData.phone.trim()}`,
@@ -110,22 +118,44 @@ const BookingForm: React.FC = () => {
     return lines.join('\n');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (inFlight.current || submitSuccess) return; // blocks double taps while sending
+    if (!validateForm()) return;
 
-    if (validateForm()) {
-      setIsSubmitting(true);
-      const message = buildWhatsAppMessage();
-      const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
-      setLastUrl(whatsappUrl);
-      // opened inside the click so phones don't block it; a manual link is shown as a fallback
-      window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-      setTimeout(() => {
-        setIsSubmitting(false);
-        setSubmitSuccess(true);
-        // keep the request summary (disclaimer + manual WhatsApp link) on screen
-        requestAnimationFrame(() => document.getElementById('booking-result')?.scrollIntoView({ block: 'center' }));
-      }, 400);
+    inFlight.current = true;
+    setIsSubmitting(true);
+    const message = buildWhatsAppMessage();
+    const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+    setLastUrl(whatsappUrl);
+    // opened inside the tap so phones don't block it; saving runs in parallel
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+
+    setSaveState('saving');
+    try {
+      await requestStore.create({
+        id: requestIdRef.current,
+        code,
+        name: formData.name.trim(),
+        phone: formData.phone.trim(),
+        from: formData.pickupAddress.trim(),
+        to: formData.destination.trim(),
+        date: formData.date,
+        time: formData.time,
+        passengers: Number(formData.passengers),
+        wheelchair: formData.wheelchairAccess === 'yes',
+        wheelchairCount: formData.wheelchairAccess === 'yes' ? Number(formData.wheelchairCount) : 0,
+        email: formData.email.trim() || undefined,
+        notes: formData.notes.trim() || undefined,
+        lang: i18n.language,
+      });
+      setSaveState('saved');
+    } catch {
+      setSaveState('failed'); // the WhatsApp message still carries every detail
+    } finally {
+      setIsSubmitting(false);
+      setSubmitSuccess(true);
+      requestAnimationFrame(() => document.getElementById('booking-result')?.scrollIntoView({ block: 'center' }));
     }
   };
 
@@ -133,6 +163,9 @@ const BookingForm: React.FC = () => {
     setFormData({ name: '', phone: '', email: '', pickupAddress: '', destination: '', date: '', time: '', passengers: 1, wheelchairAccess: '', wheelchairCount: 1, notes: '' });
     setSubmitSuccess(false);
     setLastUrl('');
+    setSaveState('idle');
+    requestIdRef.current = newRequestId(); // a new form = a new request
+    inFlight.current = false;
   };
 
   return (
@@ -215,6 +248,11 @@ const BookingForm: React.FC = () => {
                   <p className="text-gray-600 mb-3">
                     {t('booking.successDesc')}
                   </p>
+                  <p className="text-gray-800 mb-2">
+                    {t('booking.requestCode')}: <strong className="ltr-num">{code}</strong>
+                  </p>
+                  {saveState === 'saved' && <p className="text-sm text-green-700 mb-3">{t('booking.saved')}</p>}
+                  {saveState === 'failed' && <p className="text-sm text-red-700 mb-3" role="alert">{t('booking.saveFailed')}</p>}
                   <p className="text-sm font-semibold text-gray-800 bg-yellow-50 border border-yellow-200 rounded-md px-3 py-2 mb-6" role="note">
                     {t('booking.disclaimer')}
                   </p>

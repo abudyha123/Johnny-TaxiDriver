@@ -278,10 +278,14 @@
       "passengers": "Passengers",
       "wheelchairs": "Wheelchairs",
       "notes": "Notes",
-      "wheelchairAccess": "Wheelchair access"
+      "wheelchairAccess": "Wheelchair access",
+      "code": "Request no."
     },
     "disclaimer": "Sending this request is not a booking confirmation. Your ride will be confirmed with Johnny.",
-    "openWhatsapp": "Open WhatsApp"
+    "openWhatsapp": "Open WhatsApp",
+    "requestCode": "Your request number",
+    "saved": "Your request was saved and will be handled by Johnny.",
+    "saveFailed": "We couldn’t save the request. Please send it on WhatsApp – all the details are already in the message."
   },
   "services": {
     "title": "Our Services",
