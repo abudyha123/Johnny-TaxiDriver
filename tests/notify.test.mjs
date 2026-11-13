@@ -110,7 +110,7 @@ test(`gives up after ${MAX_ATTEMPTS} refused attempts (no endless retries)`, asy
   const channel = newChannel(); const t0 = Date.now(); const id = await seed({}, 3 * MIN);
   const since = new Date(t0 - 3600 * 1000).toISOString();
   const s = scripted(...Array(10).fill('rejected'));
-  for (let i = 0; i < 8; i++) await reconcile({ db, send: s.send, siteUrl: SITE, channel, since, now: t0 + i * 40 * MIN, pauseMs: 0 });
+  for (let i = 0; i < 8; i++) await reconcile({ db, send: s.send, siteUrl: SITE, channel, since, now: t0 + i * 40 * MIN, pauseMs: 0, maxSends: 10000 });
   assert.equal(s.calls.filter((c) => c.url.endsWith(id)).length, MAX_ATTEMPTS);
   assert.equal((await marker(channel, id)).state, 'gave-up');
 });
@@ -131,7 +131,7 @@ test('reconcile: completes missed requests (even > 15 min old) but never older t
   const confirmed = await seed({ status: 'confirmed' }, 30 * MIN);   // Johnny already handled it
   const manual = await seed({ source: 'whatsapp' }, 30 * MIN);       // entered by Johnny
   const s = scripted();
-  const sum = await reconcile({ db, send: s.send, siteUrl: SITE, channel, since, now: t0, pauseMs: 0 });
+  const sum = await reconcile({ db, send: s.send, siteUrl: SITE, channel, since, now: t0, pauseMs: 0, maxSends: 10000 });
   const sentIds = s.calls.map((c) => c.url.split('r=')[1]);
   assert.ok(sentIds.includes(missed), 'missed request announced');
   for (const x of [beforeSince, fresh, confirmed, manual]) assert.ok(!sentIds.includes(x), `must not announce ${x}`);
@@ -139,7 +139,7 @@ test('reconcile: completes missed requests (even > 15 min old) but never older t
   assert.ok(sum.tooFresh >= 1);
   // a second run sends nothing new
   const before = s.calls.length;
-  await reconcile({ db, send: s.send, siteUrl: SITE, channel, since, now: t0 + MIN, pauseMs: 0 });
+  await reconcile({ db, send: s.send, siteUrl: SITE, channel, since, now: t0 + MIN, pauseMs: 0, maxSends: 10000 });
   assert.equal(s.calls.filter((c) => c.url.endsWith(missed)).length, 1);
   assert.ok(s.calls.length >= before);
 });
@@ -149,7 +149,7 @@ test('reconcile retries a failed notification after its back-off', async () => {
   const s = scripted('rejected', 'ok');
   await notifyNewRequest({ id, db, send: s.send, siteUrl: SITE, channel, now: t0 });
   const since = new Date(t0 - 3600 * 1000).toISOString();
-  await reconcile({ db, send: s.send, siteUrl: SITE, channel, since, now: t0 + 3 * MIN, pauseMs: 0 });
+  await reconcile({ db, send: s.send, siteUrl: SITE, channel, since, now: t0 + 3 * MIN, pauseMs: 0, maxSends: 10000 });
   assert.equal((await marker(channel, id)).state, 'sent');
 });
 test('reconcile does nothing without NOTIFY_SINCE (safe default)', async () => {
