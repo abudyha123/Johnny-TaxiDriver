@@ -109,7 +109,8 @@ test(`gives up after ${MAX_ATTEMPTS} refused attempts (no endless retries)`, asy
   // later attempts come from the scheduled catch-up (the browser path only covers 15 min)
   const channel = newChannel(); const t0 = Date.now(); const id = await seed({}, 3 * MIN);
   const since = new Date(t0 - 3600 * 1000).toISOString();
-  const s = scripted(...Array(10).fill('rejected'));
+  const calls = []; // always refuses (other tests' requests in the emulator may also be scanned)
+  const s = { calls, send: async (text, b, url) => { calls.push({ text, url }); throw new SendError('rejected', 'http-400'); } };
   for (let i = 0; i < 8; i++) await reconcile({ db, send: s.send, siteUrl: SITE, channel, since, now: t0 + i * 40 * MIN, pauseMs: 0, maxSends: 10000 });
   assert.equal(s.calls.filter((c) => c.url.endsWith(id)).length, MAX_ATTEMPTS);
   assert.equal((await marker(channel, id)).state, 'gave-up');
