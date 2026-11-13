@@ -106,10 +106,12 @@ test('crash mid-send (stale "sending" lease) → retried after the lease, as a p
   assert.match(s.calls[0].text, /ייתכן שזו התראה חוזרת/);
 });
 test(`gives up after ${MAX_ATTEMPTS} refused attempts (no endless retries)`, async () => {
-  const channel = newChannel(); const id = await seed(); const s = scripted(...Array(10).fill('rejected'));
-  let t = Date.now();
-  for (let i = 0; i < 8; i++) { await notifyNewRequest({ id, db, send: s.send, siteUrl: SITE, channel, now: t }); t += 40 * MIN; }
-  assert.equal(s.calls.length, MAX_ATTEMPTS);
+  // later attempts come from the scheduled catch-up (the browser path only covers 15 min)
+  const channel = newChannel(); const t0 = Date.now(); const id = await seed({}, 3 * MIN);
+  const since = new Date(t0 - 3600 * 1000).toISOString();
+  const s = scripted(...Array(10).fill('rejected'));
+  for (let i = 0; i < 8; i++) await reconcile({ db, send: s.send, siteUrl: SITE, channel, since, now: t0 + i * 40 * MIN, pauseMs: 0 });
+  assert.equal(s.calls.filter((c) => c.url.endsWith(id)).length, MAX_ATTEMPTS);
   assert.equal((await marker(channel, id)).state, 'gave-up');
 });
 test('Telegram 429 "retry_after" is respected', async () => {
