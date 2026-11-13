@@ -39,6 +39,9 @@ const other = await browser.newContext({ ...devices['iPhone 13'] });
 
 const customer = await phone.newPage();
 let trackLink = '';
+// The notify endpoint is simulated as FAILING (500): the customer must still see "saved".
+const notifyCalls = [];
+await phone.route('**/api/notify-new-request', (route) => { notifyCalls.push(route.request().postDataJSON()); route.fulfill({ status: 500, body: '{}' }); });
 
 await step('customer: request is saved and shows a real "awaiting confirmation" status', async () => {
   await customer.goto(SITE + '/');
@@ -60,6 +63,12 @@ await step('customer: request is saved and shows a real "awaiting confirmation" 
   assert.doesNotMatch(txt, /הנסיעה אושרה/);
   trackLink = await customer.inputValue('#booking-result input[readonly]');
   assert.match(trackLink, /\/track\?l=he#[A-Za-z0-9_-]{43}$/);
+});
+
+await step('notification is requested once, only after the save – and its failure is invisible to the customer', async () => {
+  assert.equal(notifyCalls.length, 1, `calls: ${notifyCalls.length}`);
+  assert.match(notifyCalls[0].id, /^[0-9a-f-]{36}$/);
+  assert.ok(!(await customer.innerText('#booking-result')).includes('לא נשמרה'));
 });
 
 const tracker = await other.newPage();
@@ -132,6 +141,7 @@ await step('wrong, missing and expired links are refused', async () => {
 
 await step('admin on a phone: "to handle" / "upcoming" views, manual request, big call + confirm buttons', async () => {
   const c = await browser.newContext({ ...devices['Pixel 7'] }); const p = await c.newPage();
+  const adminNotify = []; await c.route('**/api/notify-new-request', (r) => { adminNotify.push(1); r.fulfill({ status: 200, body: '{}' }); });
   await p.goto(SITE + '/admin');
   await p.fill('#em', ADMIN.email); await p.fill('#pw', ADMIN.password); await p.click('button[type=submit]');
   await p.getByRole('button', { name: /לטיפול/ }).waitFor({ timeout: 15000 });
@@ -164,7 +174,23 @@ await step('admin on a phone: "to handle" / "upcoming" views, manual request, bi
   const t = await other.newPage(); await t.goto(link);
   await t.waitForSelector('text=הנסיעה אושרה', { timeout: 15000 });
   assert.ok(!(await t.innerText('body')).includes('לקוח מהטלפון'));
+  assert.equal(adminNotify.length, 0, 'manual request must not notify');
   await p.screenshot({ path: 'e2e-admin-mobile.png', fullPage: false });
+  await c.close();
+});
+
+await step('notification link /admin?r=<id> opens that request (after signing in)', async () => {
+  const c = await browser.newContext({ ...devices['Pixel 7'] }); const p = await c.newPage();
+  // find the website request's id through the emulator (test setup only)
+  const r = await fetch(`${FS}:runQuery`, { method: 'POST', headers: { 'content-type': 'application/json', Authorization: 'Bearer owner' },
+    body: JSON.stringify({ structuredQuery: { from: [{ collectionId: 'requests' }], where: { fieldFilter: { field: { fieldPath: 'name' }, op: 'EQUAL', value: { stringValue: 'לקוחה לבדיקה' } } } } }) });
+  const id = (await r.json()).find((x) => x.document)?.document.name.split('/').pop();
+  assert.ok(id, 'request id');
+  await p.goto(`${SITE}/admin?r=${id}`);
+  await p.fill('#em', ADMIN.email); await p.fill('#pw', ADMIN.password); await p.click('button[type=submit]');
+  const card = p.locator(`#req-${id}`);
+  await card.waitFor({ timeout: 15000 });
+  assert.match(await card.getAttribute('class'), /ring-4/);
   await c.close();
 });
 

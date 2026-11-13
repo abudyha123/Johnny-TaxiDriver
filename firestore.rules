@@ -185,6 +185,13 @@ service cloud.firestore {
         && !exists(/databases/$(database)/documents/requests/$(d.lastId));
     }
 
+    // ---------- notification markers ----------
+    // Written only by the server (Admin SDK, which bypasses these rules) to send at most
+    // one "new request" message per request. No browser may read or write them.
+    match /notifications/{id} {
+      allow read, write: if false;
+    }
+
     // ---------- admin allowlist ----------
     // Documents here are created by hand in the Firebase console (document id = the
     // admin's Auth UID). No client can write them.

@@ -19,6 +19,7 @@ jobs:
         with: { node-version: '22', cache: npm }
       - run: npm ci
       - run: npm run test:rules
+      - run: npm run test:server
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 20

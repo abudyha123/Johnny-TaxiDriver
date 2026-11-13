@@ -120,7 +120,7 @@ const Login: React.FC<{ notAllowed?: string }> = ({ notAllowed }) => {
   );
 };
 
-const RequestCard: React.FC<{ r: RideRequest; dup: boolean; moved?: boolean; onStatus: (s: RequestStatus) => Promise<void> }> = ({ r, dup, moved, onStatus }) => {
+const RequestCard: React.FC<{ r: RideRequest; dup: boolean; moved?: boolean; focused?: boolean; onStatus: (s: RequestStatus) => Promise<void> }> = ({ r, dup, moved, focused, onStatus }) => {
   const [pending, setPending] = useState<RequestStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
@@ -135,7 +135,7 @@ const RequestCard: React.FC<{ r: RideRequest; dup: boolean; moved?: boolean; onS
   const choose = (s: RequestStatus) => (s === 'confirmed' || s === 'cancelled' ? setPending(s) : apply(s));
 
   return (
-    <li className={`bg-white rounded-2xl border shadow-sm p-4 md:p-5 ${moved ? 'border-gray-400 border-dashed' : 'border-gray-200'}`}>
+    <li id={`req-${r.id}`} className={`bg-white rounded-2xl border shadow-sm p-4 md:p-5 scroll-mt-24 ${moved ? 'border-gray-400 border-dashed' : 'border-gray-200'} ${focused ? 'ring-4 ring-yellow-400' : ''}`}>
       {moved && <p className="mb-2 text-xs font-bold text-gray-600">הסטטוס עודכן – הכרטיס יעבור לתצוגה המתאימה כשתחליפו תצוגה.</p>}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
@@ -244,6 +244,8 @@ const AdminApp: React.FC = () => {
   // A card whose status was just changed stays in the current view (so the WhatsApp
   // confirmation button is right there) until Johnny switches view.
   const [keep, setKeep] = useState<Set<string>>(new Set());
+  // ?r=<request id> – opened from Johnny's notification: show that request
+  const [focusId, setFocusId] = useState<string | null>(() => new URLSearchParams(window.location.search).get('r'));
   const switchView = (v: 'todo' | 'upcoming' | 'all') => { setView(v); setKeep(new Set()); };
 
   useEffect(() => {
@@ -307,6 +309,18 @@ const AdminApp: React.FC = () => {
     return list.filter((r) => (r.status === 'confirmed' && rideMs(r) >= from) || keep.has(r.id)).sort((a, b) => rideMs(a) - rideMs(b));
   }, [list, keep]);
 
+  useEffect(() => {
+    if (!focusId || !items) return;
+    const r = items.find((x) => x.id === focusId);
+    if (!r) return;
+    const v = r.status === 'new' || r.status === 'in_progress' ? 'todo' : r.status === 'confirmed' && rideMs(r) >= Date.now() - 3 * 3600_000 ? 'upcoming' : 'all';
+    setView(v); if (v === 'all') { setFilter('all'); setQ(''); }
+    requestAnimationFrame(() => document.getElementById(`req-${focusId}`)?.scrollIntoView({ block: 'center' }));
+    const u = new URL(window.location.href); u.searchParams.delete('r'); history.replaceState(null, '', u.toString());
+    const t = setTimeout(() => setFocusId(null), 6000);
+    return () => clearTimeout(t);
+  }, [focusId, items]);
+
   const renderCards = (rows: RideRequest[], grouped: boolean) => {
     const out: React.ReactNode[] = [];
     let last = '';
@@ -317,7 +331,7 @@ const AdminApp: React.FC = () => {
         last = day;
       }
       out.push(
-        <RequestCard key={r.id} r={r} dup={dupIds.has(r.id)}
+        <RequestCard key={r.id} r={r} dup={dupIds.has(r.id)} focused={focusId === r.id}
           moved={keep.has(r.id) && ((view === 'todo' && r.status !== 'new' && r.status !== 'in_progress') || (view === 'upcoming' && r.status !== 'confirmed'))}
           onStatus={async (st) => { setKeep((k) => new Set(k).add(r.id)); const store = await getRequestStore(); await store.updateStatus(r, st, who); }} />,
       );

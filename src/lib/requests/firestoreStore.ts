@@ -109,6 +109,14 @@ export const firestoreStore: RequestStore = {
       }
     };
     await withTimeout(attempt(), SAVE_TIMEOUT_MS);
+    // Saved for sure. Ask the server to tell Johnny – fire-and-forget: the server checks the
+    // request exists itself, and a failure here never changes what the customer sees.
+    try {
+      fetch('/api/notify-new-request', {
+        method: 'POST', keepalive: true, headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id: req.id }),
+      }).catch(() => {});
+    } catch { /* ignore */ }
     const now = new Date().toISOString();
     return { created: true, trackToken, request: { ...req, createdAt: now, status: 'new', history: [{ status: 'new', at: now, by: 'website' }], trackToken } };
   },

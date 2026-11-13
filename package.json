@@ -9,11 +9,13 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test:rules": "npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-johnny-taxi-rules \"node --test tests/firestore.rules.test.mjs\"",
-    "test:e2e": "npx --yes firebase-tools@14 emulators:exec --only firestore,auth --project demo-johnny-taxi-e2e \"node tests/e2e/run.mjs\""
+    "test:e2e": "npx --yes firebase-tools@14 emulators:exec --only firestore,auth --project demo-johnny-taxi-e2e \"node tests/e2e/run.mjs\"",
+    "test:server": "npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-johnny-taxi-notify \"node --test tests/notify.test.mjs\""
   },
   "dependencies": {
     "@react-three/fiber": "^8.18.0",
     "firebase": "^11.10.0",
+    "firebase-admin": "^13.10.0",
     "i18next": "^23.16.8",
     "i18next-browser-languagedetector": "^7.2.2",
     "lucide-react": "^0.344.0",
