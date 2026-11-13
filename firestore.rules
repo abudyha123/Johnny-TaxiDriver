@@ -186,8 +186,8 @@ service cloud.firestore {
     }
 
     // ---------- notification markers ----------
-    // Written only by the server (Admin SDK, which bypasses these rules) to send at most
-    // one "new request" message per request. No browser may read or write them.
+    // Written only by the server (Admin SDK, which bypasses these rules): delivery state of
+    // the "new request" message per request and channel. No browser may read or write them.
     match /notifications/{id} {
       allow read, write: if false;
     }

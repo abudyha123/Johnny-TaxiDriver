@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@react-three/fiber": "^8.18.0",
+    "@vercel/schedules": "^0.0.3",
     "firebase": "^11.10.0",
     "firebase-admin": "^13.10.0",
     "i18next": "^23.16.8",
