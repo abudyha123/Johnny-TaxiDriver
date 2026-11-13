@@ -95,11 +95,14 @@ await step('customer + other device update to "ride confirmed" without reloading
   await customer.waitForSelector('text=הנסיעה אושרה', { timeout: 15000 });
 });
 
-await step('after refresh the confirmed status is still shown', async () => {
+await step('after refresh the confirmed status is still shown (customer + admin "upcoming")', async () => {
   await tracker.reload();
   await tracker.waitForSelector('text=הנסיעה אושרה', { timeout: 15000 });
   await admin.reload();
+  await admin.getByRole('button', { name: /מאושרות קרובות/ }).click();
   await admin.locator('li', { hasText: 'לקוחה לבדיקה' }).getByText('אושרה').first().waitFor({ timeout: 15000 });
+  await admin.getByRole('button', { name: /לטיפול/ }).click();
+  assert.ok(!(await admin.innerText('main')).includes('לקוחה לבדיקה'), 'confirmed ride left "to handle"');
 });
 
 await step('connection lost: last status is marked as not verified now', async () => {

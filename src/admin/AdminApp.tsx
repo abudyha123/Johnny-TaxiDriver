@@ -120,7 +120,7 @@ const Login: React.FC<{ notAllowed?: string }> = ({ notAllowed }) => {
   );
 };
 
-const RequestCard: React.FC<{ r: RideRequest; dup: boolean; onStatus: (s: RequestStatus) => Promise<void> }> = ({ r, dup, onStatus }) => {
+const RequestCard: React.FC<{ r: RideRequest; dup: boolean; moved?: boolean; onStatus: (s: RequestStatus) => Promise<void> }> = ({ r, dup, moved, onStatus }) => {
   const [pending, setPending] = useState<RequestStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
@@ -135,7 +135,8 @@ const RequestCard: React.FC<{ r: RideRequest; dup: boolean; onStatus: (s: Reques
   const choose = (s: RequestStatus) => (s === 'confirmed' || s === 'cancelled' ? setPending(s) : apply(s));
 
   return (
-    <li className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 md:p-5">
+    <li className={`bg-white rounded-2xl border shadow-sm p-4 md:p-5 ${moved ? 'border-gray-400 border-dashed' : 'border-gray-200'}`}>
+      {moved && <p className="mb-2 text-xs font-bold text-gray-600">הסטטוס עודכן – הכרטיס יעבור לתצוגה המתאימה כשתחליפו תצוגה.</p>}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className={`text-sm font-bold border rounded-full px-3 py-1 ${STATUS_STYLE[r.status]}`}>{STATUS_LABEL_HE[r.status]}</span>
@@ -240,6 +241,10 @@ const AdminApp: React.FC = () => {
   const [sort, setSort] = useState<'received' | 'ride'>('received');
   const [view, setView] = useState<'todo' | 'upcoming' | 'all'>('todo');
   const [manualOpen, setManualOpen] = useState(false);
+  // A card whose status was just changed stays in the current view (so the WhatsApp
+  // confirmation button is right there) until Johnny switches view.
+  const [keep, setKeep] = useState<Set<string>>(new Set());
+  const switchView = (v: 'todo' | 'upcoming' | 'all') => { setView(v); setKeep(new Set()); };
 
   useEffect(() => {
     document.documentElement.lang = 'he'; document.documentElement.dir = 'rtl';
@@ -296,11 +301,11 @@ const AdminApp: React.FC = () => {
 
   // "To handle": new + in progress, soonest ride first. "Upcoming": confirmed rides from
   // 3 hours ago onwards, soonest first. Both grouped by ride day.
-  const todo = useMemo(() => list.filter((r) => r.status === 'new' || r.status === 'in_progress').sort((a, b) => rideMs(a) - rideMs(b)), [list]);
+  const todo = useMemo(() => list.filter((r) => r.status === 'new' || r.status === 'in_progress' || keep.has(r.id)).sort((a, b) => rideMs(a) - rideMs(b)), [list, keep]);
   const upcoming = useMemo(() => {
     const from = Date.now() - 3 * 3600_000;
-    return list.filter((r) => r.status === 'confirmed' && rideMs(r) >= from).sort((a, b) => rideMs(a) - rideMs(b));
-  }, [list]);
+    return list.filter((r) => (r.status === 'confirmed' && rideMs(r) >= from) || keep.has(r.id)).sort((a, b) => rideMs(a) - rideMs(b));
+  }, [list, keep]);
 
   const renderCards = (rows: RideRequest[], grouped: boolean) => {
     const out: React.ReactNode[] = [];
@@ -313,7 +318,8 @@ const AdminApp: React.FC = () => {
       }
       out.push(
         <RequestCard key={r.id} r={r} dup={dupIds.has(r.id)}
-          onStatus={async (st) => { const store = await getRequestStore(); await store.updateStatus(r, st, who); }} />,
+          moved={keep.has(r.id) && ((view === 'todo' && r.status !== 'new' && r.status !== 'in_progress') || (view === 'upcoming' && r.status !== 'confirmed'))}
+          onStatus={async (st) => { setKeep((k) => new Set(k).add(r.id)); const store = await getRequestStore(); await store.updateStatus(r, st, who); }} />,
       );
     });
     return <ul className="mt-4 grid gap-4">{out}</ul>;
@@ -354,7 +360,7 @@ const AdminApp: React.FC = () => {
       <nav className="sticky top-0 z-[5] bg-gray-100 border-b border-gray-200" aria-label="תצוגות">
         <div className="max-w-4xl mx-auto px-4 py-2 grid grid-cols-3 gap-2">
           {([['todo', 'לטיפול', todo.length], ['upcoming', 'מאושרות קרובות', upcoming.length], ['all', 'כל הבקשות', list.length]] as const).map(([k, label, n]) => (
-            <button key={k} type="button" aria-pressed={view === k} onClick={() => setView(k)}
+            <button key={k} type="button" aria-pressed={view === k} onClick={() => switchView(k)}
               className={`min-h-[52px] rounded-xl text-sm font-black leading-tight px-1 ${view === k ? 'bg-gray-900 text-white' : 'bg-white text-gray-800 border border-gray-300'}`}>
               {label}<span className={`block text-xs font-bold ${k === 'todo' && n > 0 && view !== k ? 'text-red-700' : 'opacity-80'}`}>{n}</span>
             </button>
