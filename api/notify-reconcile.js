@@ -9,7 +9,9 @@ import { notifyConfig } from '../server/config.js';
 
 export const POST = handleSchedule(async (metadata) => {
   const { channel, siteUrl, since } = notifyConfig(process.env);
-  if (!siteUrl) { console.log('notify-reconcile: PUBLIC_SITE_URL not set – skipped'); return; }
+  // not switched on yet → do nothing (no database access, no error)
+  if (!since || !process.env.FIREBASE_SERVICE_ACCOUNT) { console.log('notify-reconcile: not configured – skipped'); return; }
+  if (!siteUrl) { console.log('notify-reconcile: no site URL – skipped'); return; }
   const summary = await reconcile({ db: adminDb(), send: telegramSender(), siteUrl, channel, since });
   console.log(`notify-reconcile ${metadata.executionId}`, JSON.stringify(summary));
 });
