@@ -4,6 +4,9 @@
 export const STATUSES = ['new', 'in_progress', 'confirmed', 'cancelled', 'completed'] as const;
 export type RequestStatus = (typeof STATUSES)[number];
 
+export type RequestSource = 'website' | 'phone' | 'whatsapp';
+export const SOURCE_LABEL_HE: Record<RequestSource, string> = { website: 'אתר', phone: 'טלפון', whatsapp: 'וואטסאפ' };
+
 export const STATUS_LABEL_HE: Record<RequestStatus, string> = {
   new: 'חדשה',
   in_progress: 'בטיפול',
@@ -33,10 +36,14 @@ export type RideRequest = {
   status: RequestStatus;
   history: StatusChange[];
   trackToken?: string;        // secret for the customer's tracking link (admin-only on the request)
+  source?: RequestSource;     // where the request came from (absent on early website requests)
+  createdBy?: string;         // admin who entered a manual request
   demo?: boolean;
 };
 
-export type NewRideRequest = Omit<RideRequest, 'status' | 'history' | 'createdAt' | 'trackToken'>;
+export type NewRideRequest = Omit<RideRequest, 'status' | 'history' | 'createdAt' | 'trackToken' | 'source' | 'createdBy'>;
+/** Johnny's manual entry: same request, plus where it came from and its starting status. */
+export type ManualRideRequest = NewRideRequest & { source: 'phone' | 'whatsapp'; status: 'new' | 'in_progress' | 'confirmed' };
 
 /**
  * What the customer's tracking link can see – deliberately minimal: no name, phone,
@@ -68,7 +75,13 @@ export function trackExpiry(date: string, time: string, now = Date.now()): Date 
   return new Date(Math.min(Math.max(want, now + 2 * DAY), now + 120 * DAY));
 }
 
-export function trackUrl(token: string, lang: string, origin = window.location.origin): string {
+/** Public address of the site used in tracking links (VITE_PUBLIC_SITE_URL in production). */
+export function siteOrigin(): string {
+  const u = (import.meta.env.VITE_PUBLIC_SITE_URL as string | undefined)?.replace(/\/+$/, '');
+  return u && /^https:\/\//.test(u) ? u : window.location.origin;
+}
+
+export function trackUrl(token: string, lang: string, origin = siteOrigin()): string {
   // token in the #fragment: browsers never send it to the server or in the Referer header
   return `${origin}/track?l=${encodeURIComponent(lang)}#${token}`;
 }

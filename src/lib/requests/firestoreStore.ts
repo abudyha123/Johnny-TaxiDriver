@@ -6,7 +6,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase/client';
 import type { RequestStore } from './store';
-import { newTrackToken, trackExpiry, type NewRideRequest, type RideRequest, type RequestStatus, type StatusChange, type TrackingInfo } from './types';
+import { newTrackToken, trackExpiry, type ManualRideRequest, type NewRideRequest, type RideRequest, type RequestStatus, type StatusChange, type TrackingInfo } from './types';
 
 const SAVE_TIMEOUT_MS = 20000;
 const DAY_MS = 86400000;
@@ -14,8 +14,9 @@ const toIso = (v: unknown) => (v instanceof Timestamp ? v.toDate().toISOString()
 
 function fromDoc(id: string, d: DocumentData): RideRequest {
   const createdAt = toIso(d.createdAt);
+  const manual = d.source === 'phone' || d.source === 'whatsapp';
   const history: StatusChange[] = [
-    { status: 'new', at: createdAt, by: 'website' },
+    { status: 'new', at: createdAt, by: manual ? `${d.createdBy} (${d.source === 'phone' ? 'טלפון' : 'וואטסאפ'})` : 'website' },
     ...((d.history || []) as { status: RequestStatus; at: unknown; by: string }[]).map((h) => ({ status: h.status, at: toIso(h.at), by: h.by })),
   ];
   return {
@@ -23,6 +24,7 @@ function fromDoc(id: string, d: DocumentData): RideRequest {
     passengers: d.passengers, wheelchair: d.wheelchair, wheelchairCount: d.wheelchairCount,
     email: d.email, notes: d.notes, lang: d.lang, status: d.status, history,
     trackToken: typeof d.trackToken === 'string' ? d.trackToken : undefined,
+    source: d.source || 'website', createdBy: d.createdBy,
   };
 }
 
@@ -39,7 +41,7 @@ async function writeOnce(req: NewRideRequest, day: number, trackToken: string) {
     from: req.from, to: req.to, date: req.date, time: req.time,
     passengers: Math.trunc(req.passengers), wheelchair: req.wheelchair, wheelchairCount: Math.trunc(req.wheelchairCount),
     lang: req.lang, status: 'new', history: [], createdAt: serverTimestamp(),
-    trackToken,
+    trackToken, source: 'website',
   };
   if (req.email) data.email = req.email;
   if (req.notes) data.notes = req.notes;
@@ -58,7 +60,36 @@ async function writeOnce(req: NewRideRequest, day: number, trackToken: string) {
   await b.commit();
 }
 
+function requestData(req: NewRideRequest) {
+  const data: Record<string, unknown> = {
+    v: 1, id: req.id, code: req.code, name: req.name, phone: req.phone, phoneKey: req.phone.replace(/[^0-9]/g, ''),
+    from: req.from, to: req.to, date: req.date, time: req.time,
+    passengers: Math.trunc(req.passengers), wheelchair: req.wheelchair, wheelchairCount: Math.trunc(req.wheelchairCount),
+    lang: req.lang, createdAt: serverTimestamp(),
+  };
+  if (req.email) data.email = req.email;
+  if (req.notes) data.notes = req.notes;
+  return data;
+}
+
 export const firestoreStore: RequestStore = {
+  async createManual(req: ManualRideRequest, by: string) {
+    const fs = db();
+    const trackToken = newTrackToken();
+    const history = req.status === 'new' ? [] : [{ status: req.status, at: Timestamp.now(), by }];
+    const b = writeBatch(fs);
+    b.set(doc(fs, 'requests', req.id), {
+      ...requestData(req), status: req.status, history, trackToken, source: req.source, createdBy: by,
+    });
+    b.set(doc(fs, 'tracking', trackToken), {
+      v: 1, rid: req.id, code: req.code, status: req.status,
+      createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+      expiresAt: Timestamp.fromDate(trackExpiry(req.date, req.time)),
+    });
+    await withTimeout(b.commit(), 20000);
+    return { trackToken };
+  },
+
   mode: 'firebase',
 
   async create(req) {

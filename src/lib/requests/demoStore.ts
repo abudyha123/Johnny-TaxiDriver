@@ -1,5 +1,5 @@
 import type { RequestStore } from './store';
-import { NewRideRequest, RideRequest, RequestStatus, TrackingInfo, shortCode, newTrackToken, trackExpiry } from './types';
+import { ManualRideRequest, NewRideRequest, RideRequest, RequestStatus, TrackingInfo, shortCode, newTrackToken, trackExpiry } from './types';
 
 // DEMO ONLY: fictitious data kept in this browser's localStorage. Not shared, not secure.
 const KEY = 'jt_demo_requests_v1';
@@ -76,6 +76,20 @@ export const demoStore: RequestStore = {
     save([request, ...list]);
     return { created: true, request, trackToken };
   },
+  async createManual(req: ManualRideRequest, by: string) {
+    await new Promise((r) => setTimeout(r, 250));
+    const list = load();
+    const now = new Date().toISOString();
+    const trackToken = newTrackToken();
+    const history = [{ status: 'new' as RequestStatus, at: now, by: `${by} (${req.source === 'phone' ? 'טלפון' : 'וואטסאפ'})` }];
+    if (req.status !== 'new') history.push({ status: req.status, at: now, by });
+    const { source, status, ...rest } = req;
+    const request: RideRequest = { ...rest, createdAt: now, status, history, demo: true, trackToken, source, createdBy: by };
+    const m = loadTracks(); m[trackToken] = trackFor(request); saveTracks(m);
+    save([request, ...list]);
+    return { trackToken };
+  },
+
   subscribe(onData) {
     const push = () => onData(load().sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
     // same tab (CHANGED) and other tabs of this browser (storage event)

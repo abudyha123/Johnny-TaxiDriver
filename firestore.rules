@@ -16,12 +16,10 @@ service cloud.firestore {
     function str(v, lo, hi) { return v is string && v.size() >= lo && v.size() <= hi; }
     function optStr(d, k, hi) { return !(k in d) || (d[k] is string && d[k].size() >= 1 && d[k].size() <= hi); }
 
-    function validNewRequest(id, d) {
+    // Fields every request has, whoever creates it (customer on the site, or Johnny).
+    function validRequestBody(id, d) {
       return d.keys().hasAll(['v', 'id', 'code', 'name', 'phone', 'phoneKey', 'from', 'to', 'date', 'time',
                               'passengers', 'wheelchair', 'wheelchairCount', 'lang', 'status', 'history', 'createdAt'])
-        && d.keys().hasOnly(['v', 'id', 'code', 'name', 'phone', 'phoneKey', 'from', 'to', 'date', 'time',
-                             'passengers', 'wheelchair', 'wheelchairCount', 'lang', 'status', 'history', 'createdAt',
-                             'email', 'notes', 'trackToken'])
         && d.v == 1
         && d.id == id && id.matches('^[A-Za-z0-9-]{8,64}$')
         && d.code is string && d.code.matches('^JT-[A-Z2-9]{5}$')
@@ -39,11 +37,38 @@ service cloud.firestore {
         && optStr(d, 'email', 120)
         && optStr(d, 'notes', 1000)
         && d.lang in ['he', 'en', 'ar']
-        && d.status == 'new'
-        && d.history == []
         && d.createdAt == request.time
         // trackToken is optional so that forms built before tracking keep working
         && (!('trackToken' in d) || validTrackingPair(id, d));
+    }
+
+    // From the public website: always status "new", source "website" (or absent).
+    function validNewRequest(id, d) {
+      return validRequestBody(id, d)
+        && d.keys().hasOnly(['v', 'id', 'code', 'name', 'phone', 'phoneKey', 'from', 'to', 'date', 'time',
+                             'passengers', 'wheelchair', 'wheelchairCount', 'lang', 'status', 'history', 'createdAt',
+                             'email', 'notes', 'trackToken', 'source'])
+        && (!('source' in d) || d.source == 'website')
+        && d.status == 'new'
+        && d.history == [];
+    }
+
+    // Entered by Johnny from the admin screen (a phone call or a WhatsApp message).
+    // Same structure; marked with its source and author; may start as new / in progress /
+    // confirmed (then with one matching history entry); always gets a tracking link.
+    function validManualRequest(id, d) {
+      return isAdmin()
+        && validRequestBody(id, d)
+        && d.keys().hasOnly(['v', 'id', 'code', 'name', 'phone', 'phoneKey', 'from', 'to', 'date', 'time',
+                             'passengers', 'wheelchair', 'wheelchairCount', 'lang', 'status', 'history', 'createdAt',
+                             'email', 'notes', 'trackToken', 'source', 'createdBy'])
+        && d.source in ['phone', 'whatsapp']
+        && d.createdBy == request.auth.token.email
+        && 'trackToken' in d
+        && d.status in ['new', 'in_progress', 'confirmed']
+        && (d.status == 'new'
+            ? d.history == []
+            : (d.history is list && d.history.size() == 1 && validHistoryEntry(d.history[0], d.status)));
     }
 
     // The request's public tracking document must be created in the same batch.
@@ -66,9 +91,11 @@ service cloud.firestore {
       // Public: create only, together with the two daily counters below in the same
       // atomic batch. A second write with the same id is an update, which the public
       // may never do – so a retry can't create a duplicate.
-      allow create: if validNewRequest(id, request.resource.data)
-        && getAfter(/databases/$(database)/documents/dailyCount/$(todayKey())).data.lastId == id
-        && getAfter(/databases/$(database)/documents/phoneDaily/$(todayKey() + '_' + request.resource.data.phoneKey)).data.lastId == id;
+      allow create: if (validNewRequest(id, request.resource.data)
+          && getAfter(/databases/$(database)/documents/dailyCount/$(todayKey())).data.lastId == id
+          && getAfter(/databases/$(database)/documents/phoneDaily/$(todayKey() + '_' + request.resource.data.phoneKey)).data.lastId == id)
+        // Johnny's manual entries don't use the public daily counters
+        || validManualRequest(id, request.resource.data);
 
       allow get, list: if isAdmin();
 
@@ -103,7 +130,9 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['v', 'rid', 'code', 'status', 'createdAt', 'updatedAt', 'expiresAt'])
         && request.resource.data.keys().hasAll(['v', 'rid', 'code', 'status', 'createdAt', 'updatedAt', 'expiresAt'])
         && request.resource.data.v == 1
-        && request.resource.data.status == 'new'
+        // same status as the request it belongs to; anything but "new" only by an admin
+        && request.resource.data.status == getAfter(/databases/$(database)/documents/requests/$(request.resource.data.rid)).data.status
+        && (request.resource.data.status == 'new' || isAdmin())
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time
         && request.resource.data.expiresAt is timestamp

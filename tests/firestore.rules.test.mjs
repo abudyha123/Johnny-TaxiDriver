@@ -270,3 +270,60 @@ test('tracking: admin cannot let the two disagree or change one alone', async ()
   await assertFails(adminBatch(id, token, 'confirmed', { skipRequest: true }));
   await assertFails(updateDoc(doc(admin(), 'tracking', token), { expiresAt: inDays(100) }));
 });
+
+// ---------- manual requests (Johnny, admin screen) ----------
+function manualBatch(fs, { id = newId(), token = newToken(), email = 'johnny@example.com', over = {}, track = {}, status = 'new', history } = {}) {
+  const data = {
+    ...base(id, { status, history: history ?? (status === 'new' ? [] : [{ status, at: Timestamp.now(), by: email }]) }),
+    createdAt: serverTimestamp(), trackToken: token, source: 'phone', createdBy: email, ...over,
+  };
+  const b = writeBatch(fs);
+  b.set(doc(fs, 'requests', id), data);
+  if (track !== false) b.set(doc(fs, 'tracking', token), trackDoc(id, { status, ...track }));
+  return b.commit();
+}
+test('manual: admin adds a phone request (no public counters) with tracking', async () => {
+  await assertSucceeds(manualBatch(admin()));
+});
+test('manual: admin adds an already-confirmed WhatsApp request; tracking shows confirmed', async () => {
+  const token = newToken();
+  await assertSucceeds(manualBatch(admin(), { token, status: 'confirmed', over: { source: 'whatsapp' } }));
+  assert.equal((await getDoc(doc(visitor(), 'tracking', token))).data().status, 'confirmed');
+});
+test('manual: manual requests do not use up the public daily caps', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'dailyCount', String(DAY)), { n: 150, lastId: 'x' });
+  });
+  await assertSucceeds(manualBatch(admin()));
+});
+for (const [label, opts] of [
+  ['by a visitor', { fs: 'visitor' }],
+  ['by a signed-in non-admin', { fs: 'stranger', email: 'stranger@example.com' }],
+  ['source website', { over: { source: 'website' } }],
+  ['unknown source', { over: { source: 'email' } }],
+  ['createdBy someone else', { over: { createdBy: 'someone@else.com' } }],
+  ['without tracking link', { track: false, over: { trackToken: undefined } }],
+  ['status completed', { status: 'completed' }],
+  ['confirmed without a history entry', { status: 'confirmed', history: [] }],
+  ['tracking status differs from request', { status: 'confirmed', track: { status: 'new' } }],
+]) {
+  test(`manual create refused: ${label}`, async () => {
+    const fs = opts.fs === 'visitor' ? visitor() : opts.fs === 'stranger' ? stranger() : admin();
+    const o = { ...opts }; delete o.fs;
+    if (o.over && 'trackToken' in o.over && o.over.trackToken === undefined) {
+      // request without trackToken field at all
+      const id = newId();
+      const data = { ...base(id), createdAt: serverTimestamp(), source: 'phone', createdBy: 'johnny@example.com' };
+      return assertFails(setDoc(doc(fs, 'requests', id), data));
+    }
+    await assertFails(manualBatch(fs, o));
+  });
+}
+test('public site cannot pose as a phone request or set createdBy', async () => {
+  await assertFails(publicCreate(visitor(), newId(), { source: 'phone' }, { token: newToken() }));
+  await assertFails(publicCreate(visitor(), newId(), { createdBy: 'johnny@example.com' }, { token: newToken() }));
+  await assertSucceeds(publicCreate(visitor(), newId(), { source: 'website' }, { token: newToken() }));
+});
+test('public site cannot create a tracking link that starts as confirmed', async () => {
+  await assertFails(publicCreate(visitor(), newId(), {}, { token: newToken(), track: { status: 'confirmed' } }));
+});

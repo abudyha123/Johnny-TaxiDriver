@@ -127,6 +127,44 @@ await step('wrong, missing and expired links are refused', async () => {
   assert.ok(!(await p.innerText('body')).includes('JT-AAAAA'));
 });
 
+await step('admin on a phone: "to handle" / "upcoming" views, manual request, big call + confirm buttons', async () => {
+  const c = await browser.newContext({ ...devices['Pixel 7'] }); const p = await c.newPage();
+  await p.goto(SITE + '/admin');
+  await p.fill('#em', ADMIN.email); await p.fill('#pw', ADMIN.password); await p.click('button[type=submit]');
+  await p.getByRole('button', { name: /לטיפול/ }).waitFor({ timeout: 15000 });
+  await p.getByRole('button', { name: /בקשה ידנית/ }).click();
+  const dlg = p.getByRole('dialog');
+  await dlg.locator('label', { hasText: 'וואטסאפ' }).click();
+  await p.fill('#m-name', 'לקוח מהטלפון'); await p.fill('#m-phone', '052-3334444');
+  const d = new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10);
+  await p.fill('#m-date', d); await p.fill('#m-time', '07:45');
+  await p.fill('#m-from', 'קריית ביאליק'); await p.fill('#m-to', 'רמב״ם');
+  await dlg.locator('label', { hasText: 'לא' }).click();
+  await p.selectOption('select[aria-label="סטטוס התחלתי"]', 'confirmed');
+  await dlg.getByRole('button', { name: 'שמירת הבקשה' }).click();
+  await dlg.getByText(/הבקשה נשמרה/).waitFor({ timeout: 15000 });
+  const link = await dlg.locator('input[readonly]').inputValue();
+  assert.match(link, /\/track\?l=he#[A-Za-z0-9_-]{43}$/);
+  await dlg.getByRole('button', { name: 'סגירה' }).last().click();
+  await p.getByRole('button', { name: /מאושרות קרובות/ }).click();
+  const card = p.locator('li', { hasText: 'לקוח מהטלפון' });
+  await card.waitFor({ timeout: 15000 });
+  assert.match(await card.innerText(), /וואטסאפ/);                         // source badge
+  const call = card.getByRole('link', { name: /חיוג/ });
+  assert.equal(await call.getAttribute('href'), 'tel:0523334444');
+  const box = await call.boundingBox(); assert.ok(box.height >= 48 && box.width >= 120, 'call button big enough');
+  const conf = card.getByRole('link', { name: 'שליחת אישור בוואטסאפ' });
+  const cb = await conf.boundingBox(); assert.ok(cb.height >= 48, 'confirm button big enough');
+  // the first website request (confirmed earlier) is also in "upcoming"; "to handle" is now empty of both
+  await p.getByRole('button', { name: /לטיפול/ }).click();
+  assert.ok(!(await p.innerText('main')).includes('לקוח מהטלפון'));
+  const t = await other.newPage(); await t.goto(link);
+  await t.waitForSelector('text=הנסיעה אושרה', { timeout: 15000 });
+  assert.ok(!(await t.innerText('body')).includes('לקוח מהטלפון'));
+  await p.screenshot({ path: 'e2e-admin-mobile.png', fullPage: false });
+  await c.close();
+});
+
 await step('signed-in account that is not on the admins list gets no access', async () => {
   const c = await browser.newContext(); const p = await c.newPage();
   await p.goto(SITE + '/admin');

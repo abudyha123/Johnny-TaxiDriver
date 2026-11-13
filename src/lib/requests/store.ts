@@ -1,4 +1,4 @@
-import { NewRideRequest, RequestStatus, RideRequest, TrackingState } from './types';
+import { ManualRideRequest, NewRideRequest, RequestStatus, RideRequest, TrackingState } from './types';
 import { demoStore } from './demoStore';
 
 /**
@@ -17,6 +17,8 @@ export interface RequestStore {
   readonly mode: 'demo' | 'firebase';
   /** Resolves only after the server confirmed the save. Idempotent per request id. */
   create(req: NewRideRequest): Promise<{ created: boolean; request: RideRequest; trackToken: string }>;
+  /** Admin only: a request received by phone/WhatsApp, same structure + tracking link. */
+  createManual(req: ManualRideRequest, by: string): Promise<{ trackToken: string }>;
   /** Live list for the admin screen. Returns an unsubscribe function. */
   subscribe(onData: (list: RideRequest[]) => void, onError: (e: Error) => void): () => void;
   /** Request + its public tracking status are changed together (one atomic write). */

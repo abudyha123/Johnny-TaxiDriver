@@ -2,7 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MessageCircle, Phone } from 'lucide-react';
 import LanguageSwitcher from '../components/LanguageSwitcher';
-import TrackingStatus, { useTracking } from '../components/TrackingStatus';
+import TrackingStatus, { useTracking, LOCALE } from '../components/TrackingStatus';
 import TrackLinkActions from '../components/TrackLinkActions';
 import { REQUESTS_MODE } from '../lib/requests/store';
 
@@ -52,7 +52,7 @@ const TrackPage: React.FC = () => {
         <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
           <TrackingStatus state={state} />
           {(state.kind === 'live' || state.kind === 'stale') && (
-            <p className="mt-4 text-xs text-gray-600">{t('track.validUntil', { date: new Date(state.info.expiresAt).toLocaleDateString(i18n.language === 'en' ? 'en-GB' : `${i18n.language}-IL`) })}</p>
+            <p className="mt-4 text-xs text-gray-600">{t('track.validUntil', { date: new Date(state.info.expiresAt).toLocaleDateString(LOCALE[i18n.language] || 'he-IL') })}</p>
           )}
         </section>
         {(state.kind === 'live' || state.kind === 'stale') && (

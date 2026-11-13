@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Phone, MessageCircle, Search, LogOut, RotateCcw, Accessibility, Users, MapPin, Clock, AlertTriangle, ChevronDown, Copy, Info } from 'lucide-react';
+import { MessageCircle, Search, LogOut, RotateCcw, Accessibility, Users, MapPin, Clock, AlertTriangle, ChevronDown, Copy, Info, Plus, PhoneCall } from 'lucide-react';
 import { getRequestStore, REQUESTS_MODE } from '../lib/requests/store';
 import { resetDemoData } from '../lib/requests/demoStore';
 import { watchAdmin, signIn, signOutAdmin, sendReset, authErrorHe, type AuthState } from './adminAuth';
-import { RideRequest, RequestStatus, STATUSES, STATUS_LABEL_HE, toWhatsAppNumber, trackUrl } from '../lib/requests/types';
+import { RideRequest, RequestStatus, STATUSES, STATUS_LABEL_HE, SOURCE_LABEL_HE, toWhatsAppNumber, trackUrl } from '../lib/requests/types';
+import ManualRequestForm from './ManualRequestForm';
 
 /**
  * Johnny's private request screen (Hebrew, mobile-first).
@@ -26,6 +27,17 @@ const fmtRide = (r: RideRequest) => {
   if (isNaN(d.getTime())) return `${r.date} ${r.time}`;
   return d.toLocaleDateString('he-IL', { weekday: 'short', day: 'numeric', month: 'numeric' }) + ' · ' + r.time;
 };
+const rideMs = (r: RideRequest) => new Date(`${r.date}T${r.time || '00:00'}`).getTime();
+const dayLabel = (r: RideRequest) => {
+  const d = new Date(`${r.date}T00:00`);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const diff = Math.round((d.getTime() - today.getTime()) / 86400000);
+  const date = d.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'numeric' });
+  if (diff === 0) return `היום · ${date}`;
+  if (diff === 1) return `מחר · ${date}`;
+  if (diff < 0) return `עבר · ${date}`;
+  return date;
+};
 const fmtAgo = (iso: string) => {
   const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
   if (m < 1) return 'עכשיו';
@@ -43,7 +55,7 @@ function customerWhatsApp(r: RideRequest) {
   return `https://wa.me/${n}?text=${encodeURIComponent(text)}`;
 }
 
-const LANG_LOCALE: Record<string, string> = { he: 'he-IL', ar: 'ar-IL', en: 'en-GB' };
+const LANG_LOCALE: Record<string, string> = { he: 'he-IL', ar: 'ar-u-nu-latn', en: 'en-GB' };
 function rideWhen(r: RideRequest) {
   const d = new Date(`${r.date}T${r.time || '00:00'}`);
   const loc = LANG_LOCALE[r.lang] || 'he-IL';
@@ -128,14 +140,16 @@ const RequestCard: React.FC<{ r: RideRequest; dup: boolean; onStatus: (s: Reques
         <div className="flex items-center gap-2">
           <span className={`text-sm font-bold border rounded-full px-3 py-1 ${STATUS_STYLE[r.status]}`}>{STATUS_LABEL_HE[r.status]}</span>
           <span className="ltr-num text-sm text-gray-500 font-semibold">{r.code}</span>
+          {r.source && r.source !== 'website' && <span className="text-xs font-bold text-purple-900 bg-purple-100 rounded-full px-2 py-1">{SOURCE_LABEL_HE[r.source]}</span>}
           {dup && <span className="inline-flex items-center gap-1 text-xs font-bold text-orange-800 bg-orange-100 rounded-full px-2 py-1"><AlertTriangle size={14} />ייתכן שכפול</span>}
+          {(r.status === 'new' || r.status === 'in_progress') && rideMs(r) < Date.now() && <span className="text-xs font-bold text-red-800 bg-red-100 rounded-full px-2 py-1">מועד הנסיעה עבר</span>}
         </div>
         <span className="text-xs text-gray-500">התקבלה {fmtAgo(r.createdAt)}</span>
       </div>
 
       <div className="mt-3 grid gap-1.5 text-gray-900">
+        <p className="flex items-center gap-2 text-xl font-black"><Clock size={20} className="text-gray-500 shrink-0" /><span>{fmtRide(r)}</span></p>
         <p className="text-lg font-bold">{r.name}</p>
-        <p className="flex items-center gap-2"><Clock size={16} className="text-gray-500 shrink-0" /><span className="font-semibold">{fmtRide(r)}</span></p>
         <p className="flex items-start gap-2"><MapPin size={16} className="text-gray-500 shrink-0 mt-1" /><span>{r.from} <span className="text-gray-400">←</span> {r.to}</span></p>
         <p className="flex flex-wrap items-center gap-3 text-sm">
           <span className="inline-flex items-center gap-1"><Users size={16} className="text-gray-500" />{r.passengers} נוסעים</span>
@@ -146,17 +160,22 @@ const RequestCard: React.FC<{ r: RideRequest; dup: boolean; onStatus: (s: Reques
         {r.notes && <p className="text-sm bg-gray-50 rounded-lg px-3 py-2">{r.notes}</p>}
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        {wa && <a href={wa} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 min-h-[44px] px-4 rounded-xl bg-green-600 text-white font-bold"><MessageCircle size={18} />וואטסאפ ללקוח</a>}
-        <a href={`tel:${r.phone.replace(/[^\d+]/g, '')}`} className="inline-flex items-center gap-2 min-h-[44px] px-4 rounded-xl border border-gray-300 font-bold text-gray-800"><Phone size={18} /><span className="ltr-num">{r.phone}</span></a>
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <a href={`tel:${r.phone.replace(/[^\d+]/g, '')}`} className="flex flex-col items-center justify-center min-h-[56px] rounded-xl bg-gray-900 text-white font-bold" aria-label={`חיוג ל${r.name}, ${r.phone}`}>
+          <span className="inline-flex items-center gap-2"><PhoneCall size={18} />חיוג</span>
+          <span className="ltr-num text-xs font-semibold opacity-80">{r.phone}</span>
+        </a>
+        {wa
+          ? <a href={wa} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 min-h-[56px] rounded-xl border-2 border-green-600 text-green-800 font-bold"><MessageCircle size={18} />וואטסאפ ללקוח</a>
+          : <span className="flex items-center justify-center min-h-[56px] rounded-xl border border-gray-200 text-xs text-gray-500 text-center px-2">אין וואטסאפ למספר הזה</span>}
       </div>
 
       <div className="mt-4 rounded-xl border border-green-200 bg-green-50/60 p-3">
         {r.status === 'confirmed' ? (
           waNum ? (
             <a href={`https://wa.me/${waNum}?text=${encodeURIComponent(confirmationText(r))}`} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 min-h-[48px] px-4 rounded-xl bg-green-700 text-white font-black">
-              <MessageCircle size={18} /> שליחת אישור בוואטסאפ
+              className="flex w-full items-center justify-center gap-2 min-h-[56px] px-4 rounded-xl bg-green-700 text-white font-black text-lg">
+              <MessageCircle size={20} /> שליחת אישור בוואטסאפ
             </a>
           ) : <p className="text-sm text-gray-700">מספר הטלפון לא בפורמט ישראלי – אי אפשר לפתוח וואטסאפ אוטומטית.</p>
         ) : (
@@ -181,7 +200,7 @@ const RequestCard: React.FC<{ r: RideRequest; dup: boolean; onStatus: (s: Reques
         <div className="flex flex-wrap gap-2">
           {STATUSES.map((s) => (
             <button key={s} type="button" onClick={() => choose(s)} aria-pressed={r.status === s}
-              className={`min-h-[40px] px-3 rounded-lg border text-sm font-bold ${r.status === s ? STATUS_STYLE[s] : 'bg-white text-gray-700 border-gray-300 hover:border-gray-500'}`}>
+              className={`min-h-[44px] px-3 rounded-lg border text-sm font-bold ${r.status === s ? STATUS_STYLE[s] : 'bg-white text-gray-700 border-gray-300 hover:border-gray-500'}`}>
               {STATUS_LABEL_HE[s]}
             </button>
           ))}
@@ -219,6 +238,8 @@ const AdminApp: React.FC = () => {
   const [filter, setFilter] = useState<RequestStatus | 'all'>('all');
   const [q, setQ] = useState('');
   const [sort, setSort] = useState<'received' | 'ride'>('received');
+  const [view, setView] = useState<'todo' | 'upcoming' | 'all'>('todo');
+  const [manualOpen, setManualOpen] = useState(false);
 
   useEffect(() => {
     document.documentElement.lang = 'he'; document.documentElement.dir = 'rtl';
@@ -250,7 +271,7 @@ const AdminApp: React.FC = () => {
     return () => { alive = false; off(); };
   }, [isAdmin]);
 
-  const list = items || [];
+  const list = useMemo(() => items || [], [items]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: list.length };
@@ -273,6 +294,31 @@ const AdminApp: React.FC = () => {
       .sort((a, b) => (sort === 'ride' ? `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`) : b.createdAt.localeCompare(a.createdAt)));
   }, [list, filter, q, sort]);
 
+  // "To handle": new + in progress, soonest ride first. "Upcoming": confirmed rides from
+  // 3 hours ago onwards, soonest first. Both grouped by ride day.
+  const todo = useMemo(() => list.filter((r) => r.status === 'new' || r.status === 'in_progress').sort((a, b) => rideMs(a) - rideMs(b)), [list]);
+  const upcoming = useMemo(() => {
+    const from = Date.now() - 3 * 3600_000;
+    return list.filter((r) => r.status === 'confirmed' && rideMs(r) >= from).sort((a, b) => rideMs(a) - rideMs(b));
+  }, [list]);
+
+  const renderCards = (rows: RideRequest[], grouped: boolean) => {
+    const out: React.ReactNode[] = [];
+    let last = '';
+    rows.forEach((r) => {
+      const day = dayLabel(r);
+      if (grouped && day !== last) {
+        out.push(<li key={`h-${r.date}`} className="pt-2 text-sm font-black text-gray-700 sticky top-[68px] z-[1] bg-gray-100/95 py-1">{day}</li>);
+        last = day;
+      }
+      out.push(
+        <RequestCard key={r.id} r={r} dup={dupIds.has(r.id)}
+          onStatus={async (st) => { const store = await getRequestStore(); await store.updateStatus(r, st, who); }} />,
+      );
+    });
+    return <ul className="mt-4 grid gap-4">{out}</ul>;
+  };
+
   if (authState.kind === 'loading') {
     return <div className="min-h-screen bg-[#0b0f14] text-white flex items-center justify-center" role="status">טוען…</div>;
   }
@@ -280,13 +326,16 @@ const AdminApp: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <header className="bg-[#0b0f14] text-white sticky top-0 z-10">
+      <header className="bg-[#0b0f14] text-white">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <div>
             <p className="text-yellow-400 font-bold text-sm">ג׳וני טקסי</p>
-            <h1 className="text-xl font-black">בקשות נסיעה</h1>
+            <h1 className="text-xl font-black whitespace-nowrap">בקשות</h1>
           </div>
           <div className="flex items-center gap-2">
+            <button type="button" onClick={() => setManualOpen(true)} className="inline-flex items-center gap-1.5 min-h-[44px] px-3 rounded-xl bg-yellow-400 text-gray-900 font-black text-sm whitespace-nowrap">
+              <Plus size={18} /> בקשה ידנית
+            </button>
             {IS_DEMO && <button type="button" onClick={() => resetDemoData()} className="icon-btn" aria-label="איפוס נתוני ההדגמה" title="איפוס נתוני ההדגמה"><RotateCcw size={18} /></button>}
             <button type="button" onClick={() => signOutAdmin()} className="icon-btn" aria-label="יציאה" title="יציאה"><LogOut size={18} /></button>
           </div>
@@ -302,7 +351,35 @@ const AdminApp: React.FC = () => {
         )}
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-5">
+      <nav className="sticky top-0 z-[5] bg-gray-100 border-b border-gray-200" aria-label="תצוגות">
+        <div className="max-w-4xl mx-auto px-4 py-2 grid grid-cols-3 gap-2">
+          {([['todo', 'לטיפול', todo.length], ['upcoming', 'מאושרות קרובות', upcoming.length], ['all', 'כל הבקשות', list.length]] as const).map(([k, label, n]) => (
+            <button key={k} type="button" aria-pressed={view === k} onClick={() => setView(k)}
+              className={`min-h-[52px] rounded-xl text-sm font-black leading-tight px-1 ${view === k ? 'bg-gray-900 text-white' : 'bg-white text-gray-800 border border-gray-300'}`}>
+              {label}<span className={`block text-xs font-bold ${k === 'todo' && n > 0 && view !== k ? 'text-red-700' : 'opacity-80'}`}>{n}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      <main className="max-w-4xl mx-auto px-4 py-4">
+        {loadErr && <p className="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-800 p-3 text-sm" role="alert">{loadErr}</p>}
+        {items === null && !loadErr && <p className="mt-10 text-center text-gray-500" role="status">טוען בקשות…</p>}
+
+        {items !== null && view === 'todo' && (
+          <section aria-label="בקשות לטיפול">
+            <p className="text-sm text-gray-600">בקשות חדשות ובטיפול, לפי מועד הנסיעה – הקרובה ראשונה.</p>
+            {todo.length === 0 ? <p className="mt-10 text-center text-gray-500">אין בקשות שממתינות לטיפול.</p> : renderCards(todo, true)}
+          </section>
+        )}
+        {items !== null && view === 'upcoming' && (
+          <section aria-label="נסיעות מאושרות קרובות">
+            <p className="text-sm text-gray-600">נסיעות שאושרו, מהשעות האחרונות והלאה, לפי מועד הנסיעה.</p>
+            {upcoming.length === 0 ? <p className="mt-10 text-center text-gray-500">אין נסיעות מאושרות קרובות.</p> : renderCards(upcoming, true)}
+          </section>
+        )}
+
+        {items !== null && view === 'all' && (<>
         <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1" role="tablist" aria-label="סינון לפי סטטוס">
           {(['all', ...STATUSES] as const).map((s) => (
             <button key={s} role="tab" aria-selected={filter === s} onClick={() => setFilter(s)}
@@ -326,20 +403,10 @@ const AdminApp: React.FC = () => {
           </label>
         </div>
 
-        {loadErr && <p className="mt-4 rounded-lg bg-red-50 border border-red-200 text-red-800 p-3 text-sm" role="alert">{loadErr}</p>}
-        {items === null && !loadErr
-          ? <p className="mt-10 text-center text-gray-500" role="status">טוען בקשות…</p>
-          : shown.length === 0
-          ? <p className="mt-10 text-center text-gray-500">אין בקשות להצגה.</p>
-          : (
-            <ul className="mt-4 grid gap-4">
-              {shown.map((r) => (
-                <RequestCard key={r.id} r={r} dup={dupIds.has(r.id)}
-                  onStatus={async (s) => { const store = await getRequestStore(); await store.updateStatus(r, s, who); }} />
-              ))}
-            </ul>
-          )}
+        {shown.length === 0 ? <p className="mt-10 text-center text-gray-500">אין בקשות להצגה.</p> : renderCards(shown, false)}
+        </>)}
       </main>
+      {manualOpen && <ManualRequestForm by={who} onClose={() => setManualOpen(false)} confirmationText={confirmationText} />}
     </div>
   );
 };

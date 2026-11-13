@@ -4,7 +4,7 @@ import { CheckCircle2, Clock3, Loader2, WifiOff, XCircle, Flag, Hourglass } from
 import { getRequestStore } from '../lib/requests/store';
 import type { RequestStatus, TrackingState } from '../lib/requests/types';
 
-export const LOCALE: Record<string, string> = { he: 'he-IL', ar: 'ar-IL', en: 'en-GB' };
+export const LOCALE: Record<string, string> = { he: 'he-IL', ar: 'ar-u-nu-latn', en: 'en-GB' };
 
 export function fmtDateTime(iso: string, lang: string) {
   const d = new Date(iso);
